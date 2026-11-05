@@ -416,7 +416,8 @@ struct RecordsRecordSheet: View {
 
     private var assigneeOptions: [(value: String, title: String)] {
         var options: [(value: String, title: String)] = [(value: "", title: L("Choose assignee"))]
-        for member in members { options.append((value: member.id, title: member.isCurrentMember == true ? LF("%@ (You)", member.label) : member.label)) }
+        // `label` already says "(tú)" for the reader; adding it again read "Ana (tú) (tú)".
+        for member in members { options.append((value: member.id, title: member.label)) }
         return options
     }
 
@@ -449,7 +450,7 @@ struct RecordsRecordSheet: View {
             )
         } else {
             FormField(label: L("Assignee"), key: "assignee", form: form, required: true) {
-                Text(currentMember.map { LF("%@ (You)", $0.label) } ?? L("You"))
+                Text(currentMember?.label ?? L("You"))
                     .font(Theme.text(15, weight: .semibold))
                     .foregroundStyle(Theme.inkStrong)
                     .frame(maxWidth: .infinity, alignment: .leading)

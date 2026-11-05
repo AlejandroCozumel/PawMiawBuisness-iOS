@@ -261,19 +261,23 @@ enum ClientsBriefWords {
     static func datesInText(_ text: String) -> String {
         guard let regex = try? NSRegularExpression(pattern: #"\b(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}):(\d{2}))?\b"#) else { return text }
         var result = text
+        // Days and times in the text are read and printed on one clock (UTC), so they show as written.
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC")!
         for match in regex.matches(in: text, range: NSRange(text.startIndex..., in: text)).reversed() {
             guard let whole = Range(match.range, in: text), let dayRange = Range(match.range(at: 1), in: text), let day = dayDate(String(text[dayRange])) else { continue }
             let f = DateFormatter()
             f.locale = .app
             f.timeZone = TimeZone(identifier: "UTC")
-            let sameYear = Calendar(identifier: .gregorian).component(.year, from: day) == Calendar(identifier: .gregorian).component(.year, from: Date())
+            let sameYear = utc.component(.year, from: day) == Calendar(identifier: .gregorian).component(.year, from: Date())
             f.setLocalizedDateFormatFromTemplate(sameYear ? "dMMM" : "dMMMyyyy")
             var shown = f.string(from: day)
             if let h = Range(match.range(at: 2), in: text), let m = Range(match.range(at: 3), in: text),
                let hours = Int(text[h]), let minutes = Int(text[m]) {
+                // Built on the phone's clock and printed on UTC, "19:30" showed shifted by the phone's offset.
                 var parts = DateComponents(); parts.hour = hours; parts.minute = minutes
-                let tf = DateFormatter(); tf.locale = .app; tf.timeZone = TimeZone(identifier: "UTC"); tf.setLocalizedDateFormatFromTemplate("jmm")
-                if let time = Calendar(identifier: .gregorian).date(from: parts) { shown += ", \(tf.string(from: time))" }
+                let tf = DateFormatter(); tf.locale = .app; tf.timeZone = utc.timeZone; tf.setLocalizedDateFormatFromTemplate("jmm")
+                if let time = utc.date(from: parts) { shown += ", \(tf.string(from: time))" }
             }
             result.replaceSubrange(Range(NSRange(whole, in: text), in: result) ?? whole, with: shown)
         }

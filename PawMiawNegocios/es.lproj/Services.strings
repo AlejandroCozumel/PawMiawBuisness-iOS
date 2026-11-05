@@ -836,3 +836,16 @@
 /* Confirm sheets: the web's own cancel words */
 "Keep it" = "Mantenerla";
 "Not now" = "Ahora no";
+
+/* Grooming and home-visit refusals (SvcRefusals) */
+"This client has no phone. Add one to write on WhatsApp, or tell them in PawMiaw." = "Este cliente no tiene teléfono. Agrega uno para escribirle por WhatsApp, o avísale en PawMiaw.";
+"This family isn’t on PawMiaw yet. Tell them by WhatsApp, or invite them." = "Esta familia todavía no está en PawMiaw. Avísale por WhatsApp o invítala.";
+"This visit isn’t a groom." = "Esta visita no es de estética.";
+"This visit isn’t open: check the pet in first, or it was already finished." = "Esta visita no está abierta: primero registra la llegada, o ya se terminó.";
+"Only home visits have this" = "Solo las visitas a domicilio tienen esto";
+"“On my way” isn't offered for this service" = "“Voy en camino” no se ofrece para este servicio";
+"This visit already started or isn't today" = "Esta visita ya empezó o no es hoy";
+"This visit is over — it can't be started now" = "Esta visita ya terminó: no se puede empezar ahora";
+"Confirm that your team was told before turning on location" = "Confirma que se le avisó a tu equipo antes de activar la ubicación";
+"Choose a day within the last week or the next 30 days" = "Elige un día de la última semana o de los próximos 30 días";
+"This family isn’t on PawMiaw yet. Tell them by WhatsApp." = "Esta familia todavía no está en PawMiaw. Avísale por WhatsApp.";

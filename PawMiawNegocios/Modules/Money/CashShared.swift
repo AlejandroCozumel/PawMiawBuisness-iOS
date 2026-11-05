@@ -541,7 +541,7 @@ struct CashTendersView: View {
                 VStack(spacing: 4) {
                     summaryLine(L("Total"), cashMoney(state.total, state.currency), bold: true)
                     summaryLine(L("Paid now"), cashMoney(state.paid, state.currency), bold: true)
-                    if state.remaining > 0 { summaryLine(L("Left on the account"), cashMoney(state.remaining, state.currency)).foregroundStyle(Theme.inkSoft) }
+                    if state.remaining > 0 { summaryLine(L("Left on the account"), cashMoney(state.remaining, state.currency), ink: Theme.inkSoft) }
                     if state.change > 0 {
                         HStack {
                             Text(L("Change"))
@@ -562,14 +562,16 @@ struct CashTendersView: View {
         }
     }
 
-    private func summaryLine(_ label: String, _ value: String, bold: Bool = false) -> some View {
+    /// One line of the summary. `ink` is the line's colour: a `.foregroundStyle` put on the result
+    /// would lose to the inner one ("Left on the account" read dark; the web draws it soft).
+    private func summaryLine(_ label: String, _ value: String, bold: Bool = false, ink: Color = Theme.inkStrong) -> some View {
         HStack {
             Text(label)
             Spacer(minLength: 12)
             Text(value).fontWeight(bold ? .bold : .regular).monospacedDigit()
         }
         .font(Theme.text(14))
-        .foregroundStyle(Theme.inkStrong)
+        .foregroundStyle(ink)
     }
 }
 

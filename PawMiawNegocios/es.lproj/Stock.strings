@@ -946,3 +946,18 @@
 "Keep it" = "Conservarla";
 "Keep the draft" = "Conservar el borrador";
 "Back@rx" = "Volver";
+
+/* Pharmacy and prescription refusals (StockRxWords.messages) */
+"That prescription wasn’t found." = "No se encontró esa receta.";
+"That prescription isn’t signed yet." = "Esa receta todavía no está firmada.";
+"That prescription was cancelled." = "Esa receta se canceló.";
+"That prescription expired — ask the vet for a new one." = "Esa receta venció: pide una nueva al veterinario.";
+"That prescription has nothing left to fill — ask the vet for a refill." = "A esa receta ya no le queda nada por surtir: pide un resurtido al veterinario.";
+"A controlled medicine is handed over by a vet — ask one to do it." = "Un medicamento controlado lo entrega un veterinario: pídele a uno que lo haga.";
+"This medicine already has a refill request open." = "Este medicamento ya tiene una solicitud de resurtido abierta.";
+"This prescription is already signed." = "Esta receta ya está firmada.";
+"A medicine on this prescription is no longer in the Catalog. Choose it again or write it in." = "Un medicamento de esta receta ya no está en el Catálogo. Elígelo de nuevo o escríbelo.";
+"This request was already answered." = "Esta solicitud ya se respondió.";
+"That refill request wasn’t found." = "No se encontró esa solicitud de resurtido.";
+"This visit’s bill is closed — dispense it at the desk." = "La cuenta de esta visita ya se cerró: surte la receta en recepción.";
+"This prescription wasn’t written at a visit." = "Esta receta no se hizo en una visita.";
