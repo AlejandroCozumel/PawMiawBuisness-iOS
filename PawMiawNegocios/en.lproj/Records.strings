@@ -1,0 +1,19 @@
+/* PawMiaw Negocios — Records: English for the keys that carry a context after "@". */
+
+"Signed@plural" = "Signed";
+"Done@plural" = "Done";
+"Record@one" = "Record";
+"Other@route" = "Other";
+"Remove %@@file" = "Remove %@";
+"From %@@day" = "From %@";
+"Until %@@day" = "Until %@";
+"All@records" = "All";
+"Active@state" = "Active";
+"Completed@state" = "Completed";
+"Inactive@state" = "Inactive";
+"Open@status" = "Open";
+"Booked@visit" = "Booked";
+"Finished@visit" = "Finished";
+"Cancelled@visit" = "Cancelled";
+"None@follow-up" = "None";
+"Linked@visit" = "Linked";

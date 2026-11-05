@@ -1,0 +1,27 @@
+/* Services module: the English for keys that carry a context. */
+
+"Due bucket · Overdue" = "Overdue";
+"Session · Cancelled" = "Cancelled";
+"Roster · Here" = "Here";
+"Roster · Done" = "Done";
+"Roster · Booked" = "Booked";
+"Home visit · Missed" = "Missed";
+"Home visit · Done" = "Done";
+"Home visit · In progress" = "In progress";
+"Home visit · Late" = "Late";
+"Groom stage · Scheduled" = "Scheduled";
+"Groom stage · Waiting" = "Waiting";
+"Groom stage · In progress" = "In progress";
+"Groom stage · Bath" = "Bath";
+"Groom stage · Cut & dry" = "Cut & dry";
+"Groom stage · Done" = "Done";
+"Style · Other" = "Other";
+"Report · Length" = "Length";
+"Bath (service)" = "Bath";
+"Coat · Good" = "Good";
+"Coat · Dry" = "Dry";
+"Stool · Normal" = "Normal";
+"Stool · Soft" = "Soft";
+"Stay visit · Planned" = "Planned";
+"Stay visit · Visit" = "Visit";
+"Due window · Next" = "Next";

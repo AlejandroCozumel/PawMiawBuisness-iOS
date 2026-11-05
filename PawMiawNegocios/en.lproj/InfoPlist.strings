@@ -1,0 +1,5 @@
+/* Home-screen name and permission prompts in English */
+"CFBundleDisplayName" = "PawMiaw Business";
+"NSPhotoLibraryUsageDescription" = "PawMiaw Business opens the photos you choose to add to a patient's record, a report card or a conversation.";
+"NSCameraUsageDescription" = "PawMiaw Business uses the camera to take a photo for a patient's record, a report card or a conversation.";
+"NSLocationWhenInUseUsageDescription" = "PawMiaw Business records where a home visit or a walk happened while you run it, so the family and your business can see it. Only during a visit you started.";

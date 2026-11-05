@@ -1,0 +1,7 @@
+/* Stays: English wording where it differs from the key. */
+"%d skipped (plural)" = "%d skipped";
+"%d done (plural)" = "%d done";
+"Cancelled (stay)" = "Cancelled";
+"Missed visit" = "Missed";
+"%d arriving late" = "%d late";
+"Estimated total" = "Estimate";

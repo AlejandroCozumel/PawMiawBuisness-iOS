@@ -1,0 +1,19 @@
+/* Clients module: English wordings that differ from their keys (a key with a context after "@"). */
+"Already linked@pet" = "Already linked";
+"Other@species" = "Other";
+"Open@followup" = "Open";
+"Done@followup" = "Done";
+"Done@visit" = "Done";
+"Open@invoice" = "Open";
+"Overdue@status" = "Overdue";
+"Overdue@plural" = "Overdue";
+"Pending@filter" = "Pending";
+"Linked@filter" = "Linked";
+"Expired@filter" = "Expired";
+"Revoked@filter" = "Revoked";
+"Pending@status" = "Pending";
+"To confirm@status" = "To confirm";
+"Linked@status" = "Linked";
+"Expired@status" = "Expired";
+"Revoked@status" = "Revoked";
+"Expires %@@when" = "Expires %@";

@@ -1,0 +1,23 @@
+/* Inbox: notifications and Olfato AI (English): only the keys whose English differs from the key. */
+
+"Schedule@area" = "Schedule";
+"Records@area" = "Records";
+"Clients@area" = "Clients";
+"Team@area" = "Team";
+"Urgent@notification" = "Urgent";
+"Needs you@notification" = "Needs you";
+"Sign@notification" = "Sign";
+"Schedule@action" = "Schedule";
+"Open visit@notification" = "Open visit";
+"Open@notification" = "Open";
+"Active@show" = "Active";
+"Everyone@for" = "Everyone";
+"Unread@stat" = "Unread";
+"Active@stat" = "Active";
+"All@notification" = "All";
+"Done@notification" = "Done";
+"Send@olfato" = "Send";
+"Open@olfato" = "Open";
+"in %d min@notification" = "in %d min";
+"%d min@wait" = "%d min";
+"%d h@wait" = "%d h";

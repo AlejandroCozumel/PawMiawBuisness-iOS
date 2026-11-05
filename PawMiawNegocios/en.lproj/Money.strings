@@ -1,0 +1,44 @@
+/* Money module: English for keys that carry a Spanish context after "@". */
+"Open@link" = "Open";
+"Canceled@plan" = "Canceled";
+"Paid@status" = "Paid";
+"Unpaid@status" = "Unpaid";
+"All@kind" = "All";
+"Other@source" = "Other";
+"By@day" = "By";
+"Back@money" = "Back";
+"Open@register" = "Open";
+"Paid@amount" = "Paid";
+"Closed@shift" = "Closed";
+"Closed@register" = "Closed";
+"Other@method" = "Other";
+"Open@verb" = "Open";
+"Active@filter" = "Active";
+"Archived@filter" = "Archived";
+"All@status" = "All";
+"Archived@status" = "Archived";
+"Active@item" = "Active";
+"Other@product" = "Other";
+"Canceled@status" = "Canceled";
+"Overdue@status" = "Overdue";
+"Needs a price@status" = "Needs a price";
+"Draft@status" = "Draft";
+"In review@status" = "In review";
+"Returned@status" = "Returned";
+"Refunded@status" = "Refunded";
+"Part paid@status" = "Part paid";
+"Paid@filter" = "Paid";
+"Canceled@filter" = "Canceled";
+"Canceled@sale" = "Canceled";
+"Returned@sale" = "Returned";
+
+/* Restyle 2026-11-04 (B-en). */
+"%d archived@one" = "%d archived";
+"%d left@one" = "%d left";
+"%d on the shelf, none to sell@one" = "%d on the shelf, none to sell";
+"%d short — it needs a count@one" = "%d short — it needs a count";
+
+/* Restyle 2026-11-04 (C-en). */
+"%d item@bill" = "%d item";
+"%d items@bill" = "%d items";
+"Paid %@@date" = "Paid %@";

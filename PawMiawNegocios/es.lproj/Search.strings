@@ -1,0 +1,114 @@
+/* Search module: the workspace's global search (web lib/search-copy.ts, word for word). */
+
+/* The search box */
+"Search" = "Buscar";
+"Search patients, clients…" = "Buscar pacientes, clientes…";
+"Search patients, clients, visits, invoices…" = "Busca pacientes, clientes, citas, cuentas…";
+"Close" = "Cerrar";
+"Clear" = "Borrar";
+"Search isn’t available right now." = "La búsqueda no está disponible en este momento.";
+"Try again" = "Reintentar";
+"Type at least 2 characters to search patients, clients, visits and invoices." = "Escribe al menos 2 caracteres para buscar pacientes, clientes, citas y cuentas.";
+"No results for “%@”" = "Sin resultados para “%@”";
+"Try a name, a phone number, a microchip or a folio." = "Prueba con un nombre, un teléfono, un microchip o un folio.";
+"Your role can’t search patients, clients, visits or invoices. Actions and pages still show here." = "Tu rol no puede buscar pacientes, clientes, citas ni cuentas. Las acciones y páginas sí aparecen aquí.";
+
+/* Groups */
+"Recent" = "Recientes";
+"Patients" = "Pacientes";
+"Clients" = "Clientes";
+"Hospital" = "Hospital";
+"Visits" = "Citas";
+"Invoices" = "Cuentas";
+"Quick actions" = "Acciones rápidas";
+"Go to" = "Ir a";
+"All patients matching “%@”" = "Todos los pacientes con “%@”";
+"All clients matching “%@”" = "Todos los clientes con “%@”";
+"All visits matching “%@”" = "Todas las citas con “%@”";
+"All invoices matching “%@”" = "Todas las cuentas con “%@”";
+"Everyone in the hospital" = "Todo el hospital";
+
+/* What was remembered */
+"Patient" = "Paciente";
+"Client" = "Cliente";
+"Visit" = "Cita";
+"Invoice" = "Cuenta";
+
+/* A patient */
+"Owner: %@" = "Dueño: %@";
+"Microchip %@" = "Microchip %@";
+"Archived" = "Archivado";
+"Dog" = "Perro";
+"Cat" = "Gato";
+"Bird" = "Ave";
+"Rabbit" = "Conejo";
+"Fish" = "Pez";
+"Reptile" = "Reptil";
+"Small pet" = "Mascota pequeña";
+"Other" = "Otro";
+
+/* A patient in the hospital */
+"In the hospital" = "Hospitalizado";
+"Waiting for admission" = "Esperando ingreso";
+"To admit" = "Por ingresar";
+"Cage %@" = "Jaula %@";
+"Critical" = "Crítico";
+"Urgent" = "Urgente";
+"Stable" = "Estable";
+"Emergency" = "Urgencia";
+
+/* A client */
+"No pets yet" = "Sin mascotas aún";
+"%@ +%d" = "%@ +%d";
+
+/* A visit */
+"Today" = "Hoy";
+"Tomorrow" = "Mañana";
+"Yesterday" = "Ayer";
+"Upcoming" = "Próxima";
+"Arrived" = "Llegó";
+"In progress" = "En consulta";
+"Completed" = "Terminada";
+"Cancelled" = "Cancelada";
+"No-show" = "No llegó";
+
+/* A bill */
+"Bill" = "Cuenta";
+"Store sale" = "Venta de tienda";
+"Deposit" = "Anticipo";
+"Draft" = "Borrador";
+"Unpaid" = "Sin pagar";
+"Part paid" = "Pago parcial";
+"Overdue" = "Vencida";
+"Paid" = "Pagada";
+"Canceled" = "Cancelada";
+"Owes %@" = "Debe %@";
+
+/* Quick actions and pages (named as each page titles itself) */
+"New appointment" = "Nueva cita";
+"New client" = "Nuevo cliente";
+"New record" = "Nuevo registro";
+"Open register" = "Abrir caja";
+"Home" = "Inicio";
+"Schedule" = "Agenda";
+"Walks & classes" = "Paseos y clases";
+"Stays" = "Estancias";
+"Grooming" = "Estética";
+"Home visits" = "Domicilio";
+"Clients & patients" = "Clientes y pacientes";
+"Due" = "Pendientes de volver";
+"Invitations" = "Invitaciones";
+"Records" = "Expedientes";
+"Store" = "Tienda";
+"Inventory" = "Inventario";
+"Pharmacy" = "Farmacia";
+"Catalog" = "Catálogo";
+"Finance" = "Finanzas";
+"Day close" = "Cortes del día";
+"Notifications" = "Notificaciones";
+"Staff" = "Equipo";
+"Availability" = "Disponibilidad";
+"Rooms" = "Espacios";
+"Locations" = "Sedes";
+"Settings" = "Ajustes";
+"Subscription" = "Suscripción";

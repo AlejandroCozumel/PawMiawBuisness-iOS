@@ -1,0 +1,5 @@
+/* Nombre bajo el ícono y avisos de permisos en español */
+"CFBundleDisplayName" = "PawMiaw Negocios";
+"NSPhotoLibraryUsageDescription" = "PawMiaw Negocios abre las fotos que eliges para el expediente de un paciente, un reporte o una conversación.";
+"NSCameraUsageDescription" = "PawMiaw Negocios usa la cámara para tomar una foto para el expediente de un paciente, un reporte o una conversación.";
+"NSLocationWhenInUseUsageDescription" = "PawMiaw Negocios registra dónde ocurrió una visita a domicilio o un paseo mientras lo haces, para que la familia y tu negocio lo vean. Solo durante una visita que iniciaste.";

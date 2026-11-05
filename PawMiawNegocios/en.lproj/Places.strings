@@ -1,0 +1,16 @@
+/* Places: English words for keys that carry a context after "@" (Spanish needs two words for one English one). */
+
+"%@ added.@location" = "%@ added.";
+"Active@locations" = "Active";
+"Archived@locations" = "Archived";
+"%@ is active again.@location" = "%@ is active again.";
+"Archived@location-one" = "Archived";
+"Keep it@location" = "Keep it";
+"Other@room" = "Other";
+"All@rooms" = "All";
+"Archived@rooms" = "Archived";
+"%@ added.@room" = "%@ added.";
+"Keep it@room" = "Keep it";
+"%@ is active again.@room" = "%@ is active again.";
+"Occupied@ward" = "Occupied";
+"Archived@room-one" = "Archived";

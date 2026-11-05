@@ -1,0 +1,18 @@
+/* Stock: English for the keys tagged with a context (the Spanish needs two words for one English word). */
+
+"Expired@lot" = "Expired";
+"Counted@movement" = "Counted";
+"Draft@rx" = "Draft";
+"Active@rx" = "Active";
+"Expired@rx" = "Expired";
+"Cancelled@rx" = "Cancelled";
+"All@rx" = "All";
+"Expiring soon@rx" = "Expiring soon";
+"Received@register" = "Received";
+"Returned@register" = "Returned";
+"Written off@register" = "Written off";
+"Count@register" = "Count";
+"Archived@medicine" = "Archived";
+"Why@refill" = "Why";
+"Other@route" = "Other";
+"Back@rx" = "Back";
