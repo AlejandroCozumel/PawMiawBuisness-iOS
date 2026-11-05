@@ -308,7 +308,7 @@ private struct HospOrderSheet: View {
         }
     }
 
-    /// Only what changed (the server keeps each change as an event).
+    /// Only what changed (the server keeps each change as an event). A value that became empty is sent as null.
     private func changed(_ order: HospOrder, _ next: [String: Any?]) -> [String: Any?] {
         let before: [String: Any?] = [
             "kind": order.kind, "label": order.label, "catalogItemId": order.catalogItem?.id, "doseAmount": order.doseAmount, "doseUnit": order.doseUnit,
@@ -330,7 +330,9 @@ private struct HospOrderSheet: View {
             } else {
                 same = describe(previous) == describe(value)
             }
-            if !same { out[key] = value }
+            // A value that became empty (an end date, instructions) is sent as null so the server
+            // clears it: `out[key] = nil` would leave the key out.
+            if !same { out.updateValue(value, forKey: key) }
         }
         return out
     }

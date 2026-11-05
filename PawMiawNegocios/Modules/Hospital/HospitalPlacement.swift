@@ -92,17 +92,19 @@ struct HospPlacementSheet: View {
         occupied = Dictionary((board?.rooms ?? []).map { ($0.id, $0.occupied ?? 0) }, uniquingKeysWith: { a, _ in a })
     }
 
-    /// Only what changed.
+    /// Only what changed. A field cleared here is sent as null, which the server clears (as the
+    /// web does): `out[key] = nil` would leave the key out, and the old value would stay.
     private func patch() -> [String: Any?] {
         var out: [String: Any?] = [:]
-        if roomId.nonEmpty != detail.room?.id { out["roomId"] = roomId.nonEmpty }
-        if cageLabel.nonEmpty != detail.cageLabel?.nonEmpty { out["cageLabel"] = cageLabel.nonEmpty }
-        if attendingId.nonEmpty != detail.attending?.id { out["attendingMemberId"] = attendingId.nonEmpty }
-        if (reason.nonEmpty ?? "") != (detail.reason ?? "") { out["reason"] = reason.nonEmpty }
-        if priority != detail.triagePriority { out["triagePriority"] = priority }
-        if estimate != detail.estimateAmount { out["estimateAmount"] = estimate }
-        if (deposit ?? 0) != (detail.depositAmount ?? 0) { out["depositAmount"] = deposit ?? 0 }
-        if note.nonEmpty != detail.internalNote?.nonEmpty { out["internalNote"] = note.nonEmpty }
+        func set(_ key: String, _ value: Any?) { out.updateValue(value, forKey: key) }
+        if roomId.nonEmpty != detail.room?.id { set("roomId", roomId.nonEmpty) }
+        if cageLabel.nonEmpty != detail.cageLabel?.nonEmpty { set("cageLabel", cageLabel.nonEmpty) }
+        if attendingId.nonEmpty != detail.attending?.id { set("attendingMemberId", attendingId.nonEmpty) }
+        if (reason.nonEmpty ?? "") != (detail.reason ?? "") { set("reason", reason.nonEmpty) }
+        if priority != detail.triagePriority { set("triagePriority", priority) }
+        if estimate != detail.estimateAmount { set("estimateAmount", estimate) }
+        if (deposit ?? 0) != (detail.depositAmount ?? 0) { set("depositAmount", deposit ?? 0) }
+        if note.nonEmpty != detail.internalNote?.nonEmpty { set("internalNote", note.nonEmpty) }
         return out
     }
 
