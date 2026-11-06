@@ -132,6 +132,8 @@ struct CashStoreSettingsTab: View {
             ToggleRow(title: L("Fee for a missed visit"), subtitle: L("Offered when someone marks a no-show. Whoever marks it decides to charge or waive it, with a reason."), isOn: $feeOn)
             if feeOn {
                 MoneyField(label: LF("Fee (%@)", currency.nonEmpty ?? settings.currency), cents: bindOptional(\.noShowFeeAmount), key: "fee", form: form)
+                // The family sees the business's terms (docs/family-money.md §5): before booking and on each visit.
+                Text(L("Families see this fee, and until when they can cancel without it, when they book and on every visit.")).font(Theme.text(12)).foregroundStyle(Theme.inkSoft)
                 ToggleRow(title: L("Late cancellations too"), subtitle: lateOn ? L("Cancelling close to the visit is offered the same fee.") : L("Only no-shows are offered the fee."), isOn: $lateOn)
                 if lateOn {
                     inlineNumber($lateHours, key: "hours", label: L("Hours before the visit"), after: L("hours or less before the visit"))

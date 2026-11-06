@@ -244,6 +244,7 @@ enum ClientsText {
         case "paid": L("Paid")
         case "overdue": L("Overdue@status")
         case "canceled": L("Cancelled")
+        case "forgiven": L("Balance forgiven")
         default: status ?? "—"
         }
     }

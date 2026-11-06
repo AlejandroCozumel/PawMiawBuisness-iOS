@@ -79,6 +79,8 @@ enum HomeText {
         }
         let total = invoice.totalAmount ?? 0
         if invoice.status == "canceled" { return visit.billing == "no_charge" ? "no_charge" : "canceled" }
+        // Forgiven is not paid: nothing more is asked ("Saldo perdonado", docs/family-money.md §1).
+        if invoice.status == "forgiven" { return "forgiven" }
         if invoice.status == "paid" || (invoice.status != "draft" && (invoice.balanceDueAmount ?? 0) <= 0) {
             return total == 0 ? "covered" : "paid"
         }
@@ -98,6 +100,7 @@ enum HomeText {
         case "ready": return L("Ready to charge")
         case "part_paid": return L("Part paid")
         case "paid": return L("Paid@bill")
+        case "forgiven": return L("Balance forgiven")
         default: return L("Nothing to charge")
         }
     }
@@ -114,6 +117,7 @@ enum HomeText {
         case "ready": return ([billStageLabel(stage), invoice.sentBy?.name, amount].compactMap { $0?.nonEmpty }.joined(separator: " · "), .warn)
         case "part_paid": return (LF("Part paid · %@ to pay", amount), .warn)
         case "covered": return (billStageLabel(stage), .good)
+        case "forgiven": return (billStageLabel(stage), .muted)
         default: return nil
         }
     }

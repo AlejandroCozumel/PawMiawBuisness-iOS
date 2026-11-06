@@ -1822,3 +1822,51 @@
 "The visit itself stays as it is." = "La consulta queda como está.";
 
 "Keep it" = "Conservarla";
+
+/* "Perdonar saldo" (docs/family-money.md §1): the business forgives what is left on a bill. */
+"Forgiven@filter" = "Perdonadas";
+"Forgiven@status" = "Perdonada";
+"Forgiven@amount" = "Perdonado";
+"Forgiven %@@date" = "Perdonada el %@";
+"Forgive the balance" = "Perdonar saldo";
+"Forgive %1$@ of %2$@?" = "¿Perdonar %1$@ de %2$@?";
+"It is recorded as an exception in Cortes. The family sees “Balance forgiven”." = "Se registra como excepción en Cortes. La familia ve “Saldo perdonado”.";
+"Why is it forgiven?" = "¿Por qué se perdona?";
+"e.g. The family moved away, a courtesy, a dispute settled" = "p. ej. La familia se mudó, una cortesía, un desacuerdo resuelto";
+"Only your team sees the reason." = "Solo tu equipo ve el motivo.";
+"Say why the balance is forgiven." = "Di por qué se perdona el saldo.";
+"Forgive %@" = "Perdonar %@";
+"Keep charging" = "Seguir cobrando";
+"%1$@ of %2$@ forgiven." = "Se perdonaron %1$@ de %2$@.";
+"What was paid (%@) stays paid." = "Lo pagado (%@) se queda pagado.";
+"It leaves what the client owes, Te deben and To charge, and doesn’t count as income." = "Sale de lo que debe el cliente, de Te deben y de Por cobrar, y no cuenta como ingreso.";
+"Balance forgiven %@" = "Saldo perdonado %@";
+"Balance forgiven" = "Saldo perdonado";
+"The family sees “Balance forgiven” in its receipts; the reason stays with your team." = "La familia ve “Saldo perdonado” en sus recibos; el motivo se queda con tu equipo.";
+"No forgiven balances" = "Ningún saldo perdonado";
+"Bills whose balance you forgave show up here." = "Aquí aparecen las cuentas cuyo saldo perdonaste.";
+"This bill can’t be forgiven now." = "Esta cuenta no se puede perdonar ahora.";
+"You can’t forgive balances. Ask an owner or admin." = "No puedes perdonar saldos. Pídeselo a un dueño o administrador.";
+"A draft isn’t owed yet: send it to the desk or cancel it." = "Un borrador todavía no se debe: envíalo a caja o cancélalo.";
+"This bill was canceled: there is nothing to forgive." = "Esta cuenta se canceló: no hay nada que perdonar.";
+"This balance was already forgiven." = "Este saldo ya se perdonó.";
+"A deposit isn’t forgiven: give it back with a refund." = "Un anticipo no se perdona: devuélvelo con un reembolso.";
+"Nothing is owed on this bill." = "No se debe nada en esta cuenta.";
+"Someone changed this bill a moment ago — look at it again before forgiving it." = "Alguien cambió esta cuenta hace un momento: revísala de nuevo antes de perdonarla.";
+"Could not forgive the balance." = "No se pudo perdonar el saldo.";
+/* The server's own words for the same refusals. */
+"Say why the balance is forgiven" = "Di por qué se perdona el saldo";
+"You do not have permission to forgive a balance" = "No tienes permiso para perdonar un saldo";
+"Only a bill out of draft can be forgiven" = "Solo se puede perdonar una cuenta que ya salió de borrador";
+"This bill's balance was already forgiven" = "El saldo de esta cuenta ya se perdonó";
+"A deposit is given back with a refund, not forgiven" = "Un anticipo se devuelve con un reembolso, no se perdona";
+"Nothing is owed on this bill" = "No se debe nada en esta cuenta";
+"This bill's balance was forgiven" = "El saldo de esta cuenta se perdonó";
+/* Cortes › Excepciones. */
+"Balances forgiven" = "Saldos perdonados";
+/* Te deben after an unlink: the reminder reaches the family the bills belong to. */
+"For the bills from before they unlinked" = "Por las cuentas de antes de desvincularse";
+/* The bill editor's date to pay (docs/family-money.md §3). */
+"The family sees this date and is reminded the day before." = "La familia ve esta fecha y se le recuerda un día antes.";
+/* What families see of the fee (docs/family-money.md §5). */
+"Families see this fee, and until when they can cancel without it, when they book and on every visit." = "Las familias ven este cargo y hasta cuándo cancelar sin cargo al reservar y en cada cita.";

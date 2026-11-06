@@ -673,8 +673,16 @@ struct SchedRecordPastSheet: View {
 // MARK: - No-show and cancel (with the fee choice)
 
 /// "Didn't come" and cancelling — a visit, or a pet taken out of a session — with the reason and the
-/// fee when the server asks for a decision; a family's other pets booked with it go too unless only
-/// this one is chosen. The visit page, Home and Paseos y clases use it.
+/// fee; a family's other pets booked with it go too unless only this one is chosen. The visit page,
+/// Home and Paseos y clases use it: the one sheet every screen cancels a visit with.
+///
+/// Cancelling asks "¿Quién cancela?" first (web visits/visit-sheets.tsx `VisitMissedSheet` and
+/// lib/visit-cancel.ts, paw-miaw-backend docs/family-money.md §5), read from the cancel preview when
+/// the sheet opens: La familia (preset when the family asked to cancel, with when it asked) is
+/// offered the late-cancellation fee when it applies, charged to their account or waived with a
+/// reason, and says how far ahead they asked; Nosotros never takes a fee and is never asked about
+/// one. An older server (no preview) keeps the sheet as it was: the fee comes from its 409
+/// `fee_decision_required`.
 struct SchedMissedSheet: View {
     let appointmentId: String
     let petName: String
@@ -684,6 +692,8 @@ struct SchedMissedSheet: View {
     let mode: String
     /// The family's other pets booked with it.
     var together: [String] = []
+    /// When the visit starts ("Pidió con 5 h de anticipación").
+    var startsAt: String? = nil
     /// The toast once cancelled ("Visit cancelled.", or a session's "Taken out. The place is open.").
     var cancelledText: String = L("Visit cancelled.")
     var onDone: () -> Void = {}
@@ -691,7 +701,13 @@ struct SchedMissedSheet: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var form = FormState()
     @State private var reason = ""
-    @State private var fee: SchedFeeRequired?
+    /// The fee the server asked a decision on (409 `fee_decision_required`).
+    @State private var refusedFee: SchedFeeRequired?
+    @State private var preview: SchedCancelPreview?
+    @State private var reading = false
+    /// "family", "business", or "" while nobody is chosen.
+    @State private var who = ""
+    @State private var whoChosen = false
     @State private var decision = "charge"
     @State private var feeNote = ""
     @State private var onlyThisPet = false
@@ -701,23 +717,43 @@ struct SchedMissedSheet: View {
         let when = SchedDay.key(appointment.startsAt) == SchedDay.today ? DateText.time(appointment.start) : DateText.dayTime(appointment.start)
         self.init(appointmentId: appointment.id, petName: appointment.petName, clientName: appointment.clientName,
                   subtitle: "\(appointment.serviceLabel) · \(when) · \(appointment.clientName)", mode: mode,
-                  together: appointment.togetherPets.compactMap(\.name))
+                  together: appointment.togetherPets.compactMap(\.name), startsAt: appointment.startsAt)
     }
 
     init(appointmentId: String, petName: String, clientName: String, subtitle: String, mode: String, together: [String] = [],
-         cancelledText: String = L("Visit cancelled."), onDone: @escaping () -> Void = {}) {
+         startsAt: String? = nil, cancelledText: String = L("Visit cancelled."), onDone: @escaping () -> Void = {}) {
         self.appointmentId = appointmentId
         self.petName = petName
         self.clientName = clientName
         self.subtitle = subtitle
         self.mode = mode
         self.together = together
+        self.startsAt = startsAt
         self.cancelledText = cancelledText
         self.onDone = onDone
     }
 
+    private var cancelling: Bool { mode == "cancel" }
+    /// The server says who may cancel and what it costs: ask. None (an older server, or it failed): today's sheet.
+    private var asksWho: Bool { cancelling && preview != nil }
+
+    /// The fee to decide on, or nil: never for the business; the server's 409 wins over the preview.
+    private var fee: SchedFeeRequired? {
+        guard cancelling && asksWho else { return refusedFee }
+        if who == "business" { return nil }
+        if let refusedFee { return refusedFee }
+        return who == "family" ? preview?.familyFee : nil
+    }
+
+    /// Whole hours between the family's ask and the visit's start, when lateness counts from the ask.
+    private var hoursAhead: Int? {
+        guard let fee, fee.kind == "late_cancel", fee.measuredFrom == "family_ask",
+              let asked = DateText.parse(fee.familyAskedAt), let start = DateText.parse(startsAt) else { return nil }
+        return max(0, Int(start.timeIntervalSince(asked) / 3600))
+    }
+
     var body: some View {
-        ProviderModal(title: mode == "no_show" ? LF("%@ didn’t come", petName) : L("Cancel the visit"), subtitle: subtitle, systemImage: mode == "no_show" ? "circle-slash" : "calendar-x-2", accent: .pink, isDirty: !reason.isEmpty || !feeNote.isEmpty, form: form, primaryTitle: mode == "no_show" ? L("Mark no-show") : L("Cancel visit"), primaryVariant: .destructive, isWorking: working, cancelTitle: L("Back")) {
+        ProviderModal(title: mode == "no_show" ? LF("%@ didn’t come", petName) : L("Cancel the visit"), subtitle: subtitle, systemImage: mode == "no_show" ? "circle-slash" : "calendar-x-2", accent: .pink, isDirty: !reason.isEmpty || !feeNote.isEmpty || whoChosen, form: form, primaryTitle: mode == "no_show" ? L("Mark no-show") : L("Cancel visit"), primaryVariant: .destructive, isWorking: working, cancelTitle: L("Back"), primaryDisabled: reading) {
             submit()
         } content: {
             if !together.isEmpty {
@@ -726,7 +762,29 @@ struct SchedMissedSheet: View {
                     OptionCard(true, title: L("Only this pet"), description: L("The others stay as they are."), icon: "circle-slash", accent: Theme.pink),
                 ], selection: $onlyThisPet)
             }
-            if mode == "cancel" {
+            if cancelling && (asksWho || reading) {
+                ModalSection(title: L("Who cancels?"), required: true) {
+                    if reading {
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small)
+                            Text(L("Checking the cancellation terms…")).font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let asked = preview?.familyAskedAt?.nonEmpty {
+                                Text(LF("The family asked to cancel on %@.", DateText.dayTime(DateText.parse(asked))))
+                                    .font(Theme.text(14, weight: .semibold)).foregroundStyle(Theme.inkStrong)
+                            }
+                            OptionCards(options: whoOptions, selection: Binding(get: { who }, set: { choose($0) }), invalid: form.error("who") != nil)
+                            if let error = form.error("who") {
+                                Text(error).font(Theme.text(12, weight: .medium)).foregroundStyle(Theme.coral)
+                            }
+                        }
+                        .id("who")
+                    }
+                }
+            }
+            if cancelling {
                 ModalSection(title: L("Why"), required: true) {
                     SchedBareField(prompt: L("The family called, the pet is sick…"), text: $reason, key: "reason", form: form)
                 }
@@ -736,6 +794,10 @@ struct SchedMissedSheet: View {
             if let fee {
                 let amount = Money.format(fee.amount, currency: fee.currency)
                 ModalSection(title: fee.kind == "no_show" ? L("No-show fee") : L("Late cancellation fee"), subtitle: LF("You decide: charge %@ to their account, or waive it.", amount)) {
+                    // Lateness counts from when the family asked, not from now.
+                    if let hoursAhead {
+                        Text(LF("They asked %d h ahead.", hoursAhead)).font(Theme.text(14)).foregroundStyle(Theme.inkStrong)
+                    }
                     OptionCards(options: [
                         OptionCard("charge", title: LF("Charge %@", amount), description: L("It goes on their account to collect."), icon: "hand-coins", accent: Theme.mango),
                         OptionCard("waive", title: L("Waive it"), description: L("Nothing is charged; the reason is kept."), icon: "badge-check", accent: Theme.aqua),
@@ -747,17 +809,48 @@ struct SchedMissedSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .task { if cancelling { await loadPreview() } }
+    }
+
+    private var whoOptions: [OptionCard<String>] {
+        let previewFee = preview?.familyFee.map { Money.format($0.amount, currency: $0.currency) }
+        return [
+            OptionCard("family", title: L("The family"), description: previewFee.map { LF("It’s late: the %@ fee can apply.", $0) } ?? L("No fee applies."), icon: "users", accent: Theme.pink),
+            OptionCard("business", title: L("We do"), description: L("Someone is sick, the business closes…: never a fee."), icon: "store", accent: Theme.pink),
+        ]
+    }
+
+    private func choose(_ next: String) {
+        who = next
+        whoChosen = true
+        form.clear("who")
+    }
+
+    /// Read fresh each time the sheet opens: the family may have asked a minute ago. An older
+    /// server answers 404 (or anything fails): no question, today's sheet.
+    private func loadPreview() async {
+        reading = true
+        defer { reading = false }
+        let read: SchedCancelPreview? = try? await API.get("/provider-appointments/\(appointmentId)/cancel-preview")
+        preview = read
+        // Preset once the preview is read (the family asked → La familia), unless someone already chose.
+        if let read, !whoChosen { who = read.suggestedCancelledBy ?? "" }
     }
 
     private func submit() {
         guard form.check([
-            ("reason", mode == "cancel" && reason.nonEmpty == nil ? L("Say why the visit is cancelled") : nil),
+            ("reason", cancelling && reason.nonEmpty == nil ? L("Say why the visit is cancelled") : nil),
+            ("who", cancelling && asksWho && who.isEmpty ? L("Choose who cancels.") : nil),
             ("feeNote", fee != nil && decision == "waive" && feeNote.nonEmpty == nil ? L("Say why the fee is waived") : nil),
         ]) else { return }
         var body: [String: Any?] = [:]
-        if fee != nil { body["fee"] = ["decision": decision, "note": feeNote.nonEmpty] as [String: Any?] }
+        // The business's own cancellation sends no fee at all (a charge would be refused: `business_cancel_no_fee`).
+        if fee != nil && !(cancelling && who == "business") { body["fee"] = ["decision": decision, "note": feeNote.nonEmpty] as [String: Any?] }
         if !together.isEmpty { body["onlyThisPet"] = onlyThisPet }
-        if mode == "cancel" { body["reason"] = reason.nonEmpty }
+        if cancelling {
+            body["reason"] = reason.nonEmpty
+            if asksWho && !who.isEmpty { body["cancelledBy"] = who }
+        }
         let path = mode == "no_show" ? "no-show" : "cancel"
         working = true
         Task {
@@ -772,11 +865,20 @@ struct SchedMissedSheet: View {
                 dismiss()
             } catch {
                 if let wanted = (error as? SchedFailure)?.fee {
-                    fee = wanted
+                    refusedFee = wanted
+                    // Only the family's cancellation takes a fee: the server asking means it reads it as theirs.
+                    if asksWho && who != "family" {
+                        who = "family"
+                        whoChosen = true
+                    }
                     Toast.show(L("Decide about the fee, then confirm."))
                     return
                 }
-                form.apply(schedAPIError(error), known: ["reason": "reason", "fee.note": "feeNote"])
+                if (error as? SchedFailure)?.code == "business_cancel_no_fee" {
+                    Toast.error(L("Your business is cancelling: no fee is charged to the family."))
+                    return
+                }
+                form.apply(schedAPIError(error), known: ["reason": "reason", "fee.note": "feeNote", "cancelledBy": "who"])
             }
         }
     }

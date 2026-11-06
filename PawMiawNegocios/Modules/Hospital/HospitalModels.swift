@@ -744,6 +744,7 @@ enum HospWords {
         case "returned": L("Returned")
         case "refunded": L("Refunded")
         case "canceled", "cancelled", "void": L("Canceled")
+        case "forgiven": L("Balance forgiven")
         default: value ?? ""
         }
     }

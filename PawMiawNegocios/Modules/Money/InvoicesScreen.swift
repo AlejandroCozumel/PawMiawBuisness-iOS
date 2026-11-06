@@ -159,6 +159,7 @@ enum CashBillRules {
             return (canFinalize ? L("Ready to send") : L("Waiting for review"), false)
         }
         if fullyGivenBack(bill) { return nil }
+        if bill.status == "forgiven" { return bill.forgivenAt.map { (LF("Forgiven %@@date", day($0)), false) } }
         if bill.status == "paid" {
             let paid = bill.allPayments.filter { !$0.voided && !$0.isRefund }.compactMap(\.paidAt).sorted().last
             return paid.map { (LF("Paid %@@date", day($0)), false) }
@@ -182,6 +183,8 @@ enum CashBillRules {
         case "ready_for_payment", "open", "overdue": return (L("Unpaid@status"), .waiting)
         case "partially_paid": return (L("Part paid@status"), .waiting)
         case "paid": return (L("Paid@status"), .done)
+        // What was left on it was forgiven: "Saldo perdonado" (the family reads the same).
+        case "forgiven": return (L("Forgiven@status"), .closed)
         default: return (L("Canceled@status"), .closed)
         }
     }
@@ -190,7 +193,8 @@ enum CashBillRules {
     @MainActor static func canEdit(_ bill: CashInvoice, _ w: Workspace) -> Bool {
         guard w.can(.billingEditInvoice) else { return false }
         let kind = kind(bill)
-        if kind == "sale" || kind == "deposit" || bill.status == "canceled" { return false }
+        // A forgiven bill is closed: the server refuses an edit (`bill_forgiven`).
+        if kind == "sale" || kind == "deposit" || bill.status == "canceled" || bill.status == "forgiven" { return false }
         if bill.status == "paid" && !w.isOwnerOrAdmin { return false }
         if bill.status != "draft" && !w.can(.billingFinalizeInvoice) { return false }
         return true
@@ -201,7 +205,39 @@ enum CashBillRules {
     }
 
     @MainActor static func canRecordPayment(_ bill: CashInvoice, _ w: Workspace) -> Bool {
-        w.can(.billingRecordPayment) && bill.balanceDueAmount > 0 && bill.status != "canceled" && bill.status != "draft" && kind(bill) != "deposit"
+        w.can(.billingRecordPayment) && bill.balanceDueAmount > 0 && bill.status != "canceled" && bill.status != "draft" && bill.status != "forgiven" && kind(bill) != "deposit"
+    }
+
+    /// "Perdonar saldo", as the server allows it (POST /provider-invoices/{id}/forgive): billing.waive_visit,
+    /// a bill out of draft with a balance, never canceled or already forgiven, never a deposit (refunded
+    /// instead). A counter sale left on account can be forgiven.
+    @MainActor static func canForgive(_ bill: CashInvoice, _ w: Workspace) -> Bool {
+        w.can(.billingWaiveVisit) && forgiveBlocker(bill) == nil
+    }
+
+    /// What stops a bill from being forgiven, in the server's own codes (its 409s); nil when nothing does.
+    static func forgiveBlocker(_ bill: CashInvoice) -> String? {
+        if bill.status == "draft" { return "bill_draft" }
+        if bill.status == "canceled" { return "bill_canceled" }
+        if bill.status == "forgiven" { return "bill_forgiven" }
+        if kind(bill) == "deposit" { return "deposit" }
+        if bill.balanceDueAmount <= 0 { return "nothing_owed" }
+        return nil
+    }
+
+    /// Why "Perdonar saldo" was refused, in words that say what to do instead.
+    static func forgiveRefusalText(_ code: String) -> String? {
+        switch code {
+        case "reason_required": L("Say why the balance is forgiven.")
+        case "forgive_forbidden": L("You can’t forgive balances. Ask an owner or admin.")
+        case "bill_draft": L("A draft isn’t owed yet: send it to the desk or cancel it.")
+        case "bill_canceled": L("This bill was canceled: there is nothing to forgive.")
+        case "bill_forgiven": L("This balance was already forgiven.")
+        case "deposit": L("A deposit isn’t forgiven: give it back with a refund.")
+        case "nothing_owed": L("Nothing is owed on this bill.")
+        case "stale_bill": L("Someone changed this bill a moment ago — look at it again before forgiving it.")
+        default: nil
+        }
     }
 
     /// "Cobrar en la Tienda, con productos": the bill goes to the counter, to charge it with products from the shelf.
@@ -220,7 +256,7 @@ enum CashBillRules {
     @MainActor static func canCancel(_ bill: CashInvoice, _ w: Workspace) -> Bool {
         guard w.can(.billingEditInvoice) else { return false }
         let kind = kind(bill)
-        if kind == "sale" || kind == "deposit" || bill.status == "canceled" || bill.amountPaid > 0 { return false }
+        if kind == "sale" || kind == "deposit" || bill.status == "canceled" || bill.status == "forgiven" || bill.amountPaid > 0 { return false }
         return bill.status == "draft" || w.can(.billingFinalizeInvoice)
     }
 
@@ -247,7 +283,7 @@ enum CashBillRules {
 // MARK: - The page
 
 private enum CashInvoiceFilter: String, CaseIterable {
-    case due, overdue, desk, partial, draft, unpriced, paid, canceled
+    case due, overdue, desk, partial, draft, unpriced, paid, forgiven, canceled
 
     var label: String {
         switch self {
@@ -258,6 +294,7 @@ private enum CashInvoiceFilter: String, CaseIterable {
         case .draft: L("Drafts")
         case .unpriced: L("Needs a price")
         case .paid: L("Paid@filter")
+        case .forgiven: L("Forgiven@filter")
         case .canceled: L("Canceled@filter")
         }
     }
@@ -269,7 +306,7 @@ private enum CashInvoiceFilter: String, CaseIterable {
         case .overdue: .state(.problem)
         case .draft: .state(.upcoming)
         case .paid: .state(.done)
-        case .canceled: .state(.closed)
+        case .forgiven, .canceled: .state(.closed)
         }
     }
 
@@ -285,6 +322,8 @@ private enum CashInvoiceFilter: String, CaseIterable {
         case .draft: ["statuses": "draft"]
         case .unpriced: ["needsPrice": "true"]
         case .paid: ["statuses": "paid"]
+        // "Saldo perdonado" (docs/family-money.md §1).
+        case .forgiven: ["statuses": "forgiven"]
         case .canceled: ["statuses": "canceled"]
         }
     }
@@ -298,6 +337,7 @@ private enum CashInvoiceFilter: String, CaseIterable {
         case .desk: (L("No unpaid bills"), L("Bills sent to be charged, with nothing paid yet, wait here."))
         case .partial: (L("No part-paid bills"), L("Bills with some of the money in show up here."))
         case .paid: (L("No paid bills here"), L("Paid bills show up here once the money is in."))
+        case .forgiven: (L("No forgiven balances"), L("Bills whose balance you forgave show up here."))
         case .canceled: (L("No canceled bills"), L("Bills canceled by mistake or on purpose show up here."))
         }
     }
@@ -365,7 +405,7 @@ private final class CashInvoicesModel: ObservableObject {
 
 /// What a bill's row (or its ⋯ menu) asks the page to do.
 enum CashBillAction {
-    case open, pay, storeCollect, send, edit, source(ProviderRoute), client, again, refund, cancel
+    case open, pay, storeCollect, send, edit, source(ProviderRoute), client, again, refund, forgive, cancel
 }
 
 struct InvoicesScreen: View {
@@ -378,6 +418,8 @@ struct InvoicesScreen: View {
     @State private var template: CashInvoice?
     @State private var refunding: CashInvoice?
     @State private var canceling: CashInvoice?
+    /// "Perdonar saldo" from a row's menu.
+    @State private var forgiving: CashInvoice?
     @State private var sendingId: String?
     /// A bill saved with "Charge it now": its payment opens once the editor has left.
     @State private var pendingPay: CashInvoice?
@@ -409,6 +451,7 @@ struct InvoicesScreen: View {
         .sheet(item: $paying) { bill in CashInvoicePaySheet(bill: bill) { Task { await reload() } } }
         .sheet(item: $refunding) { bill in CashRefundSheet(bill: bill) { Task { await reload() } } }
         .sheet(item: $canceling) { bill in CashCancelBillSheet(bill: bill) { Task { await reload() } } }
+        .sheet(item: $forgiving) { bill in CashForgiveBillSheet(invoiceId: bill.id, listed: bill) { Task { await reload() } } }
         .navigationDestination(item: $pushed) { RouteView(route: $0) }
     }
 
@@ -648,6 +691,8 @@ struct InvoicesScreen: View {
                     footerFigure(L("Balance"), totals.balanceAmount)
                     // Drafts are billed but neither paid nor owed yet: said apart, so the figures add up.
                     if let drafts = totals.draftAmount, drafts > 0 { footerFigure(L("In drafts"), drafts) }
+                    // Forgiven is out of billed, neither paid nor owed: said apart, so the figures still add up.
+                    if let forgiven = totals.forgivenAmount, forgiven > 0 { footerFigure(L("Forgiven@amount"), forgiven) }
                 }
             }
         }
@@ -719,6 +764,7 @@ struct InvoicesScreen: View {
         case .source(let route): pushed = route
         case .client: pushed = .client(bill.providerClientId)
         case .refund: refunding = bill
+        case .forgive: forgiving = bill
         case .cancel: canceling = bill
         case .send:
             sendingId = bill.id
@@ -881,6 +927,7 @@ struct CashInvoiceRow: View {
         let source = CashBillRules.source(bill).flatMap { CashBillRules.sourceAllowed($0, workspace) ? $0 : nil }
         let refund = CashBillRules.canRefund(bill, workspace)
         let cancel = CashBillRules.canCancel(bill, workspace)
+        let forgive = CashBillRules.canForgive(bill, workspace)
         return Menu {
             Button { onAction(.open) } label: { GlyphLabel(L("Open the bill"), icon: "file-text") }
             if CashBillRules.canRecordPayment(bill, workspace) {
@@ -904,9 +951,12 @@ struct CashInvoiceRow: View {
             if CashBillRules.canBillAgain(bill, workspace) {
                 Button { onAction(.again) } label: { GlyphLabel(L("Bill again"), icon: "copy") }
             }
-            if refund || cancel { Divider() }
+            if refund || forgive || cancel { Divider() }
             if refund {
                 Button(role: .destructive) { onAction(.refund) } label: { GlyphLabel(L("Refund or credit note"), icon: "undo-2") }
+            }
+            if forgive {
+                Button(role: .destructive) { onAction(.forgive) } label: { GlyphLabel(L("Forgive the balance"), icon: "hand-heart") }
             }
             if cancel {
                 Button(role: .destructive) { onAction(.cancel) } label: { GlyphLabel(L("Cancel the bill"), icon: "ban") }

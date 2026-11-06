@@ -28,6 +28,8 @@ struct HomePermissions {
     let clients: Bool
     let sign: Bool
     let register: Bool
+    /// billing.waive_visit: "Perdonar el cargo" on a no-show the family disputes (docs/family-money.md §5).
+    let forgive: Bool
 
     @MainActor
     init(_ w: Workspace) {
@@ -45,6 +47,7 @@ struct HomePermissions {
         clients = w.can(.clientsView)
         sign = w.can(.recordsApprove)
         register = w.canAny(.salesSell, .billingRecordPayment, .registerManage)
+        forgive = w.can(.billingWaiveVisit)
     }
 }
 

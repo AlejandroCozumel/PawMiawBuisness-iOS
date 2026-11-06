@@ -612,6 +612,8 @@ private struct ClientsClientRow: View {
                     FlowLayout(spacing: 4) {
                         clientsStatusTag(client.status)
                         ClientsLinkBadge(linked: client.isLinked)
+                        // "Se desconectó de PawMiaw el {fecha}": an unlink cleared the family.
+                        DisconnectedMark(at: client.disconnectedAt, by: client.disconnectedBy)
                     }
                 }
                 Spacer(minLength: 8)

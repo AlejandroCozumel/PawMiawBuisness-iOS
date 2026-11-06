@@ -113,6 +113,7 @@ enum CashFinanceCSV {
         case "paid": L("Paid")
         case "partially_paid": L("Partly paid")
         case "overdue": L("Overdue")
+        case "forgiven": L("Balance forgiven")
         default: L("Unpaid")
         }
     }

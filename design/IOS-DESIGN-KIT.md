@@ -108,6 +108,8 @@ function that maps its model onto a kit piece, e.g. `stockStateChip(row)`, `team
   tone ring). Sizes `.small` 11.2 (a row's chip), `.medium` 12 at 24 (a role, a status tag), `.large` 12.8 at 28 (a state pill),
   `.wide` 14 at 28, `.header` 14 at 36 (a state among header actions: the Store's register). `Chip(text, color:, percent:, icon:, dot:)`
   is the short form for a status/hue colour.
+- `DisconnectedMark(at:by:withDetail:)` — "Se desconectó de PawMiaw el 6 nov" / "Desvinculado el 6 nov" (web `DisconnectedMark`):
+  the amber pill a client carries after an unlink, with the money line under it where there is room. Nothing while linked.
 - `TagChip(text:icon:linked:tone:size: .xs/.sm/.header)` — "SOLO EN LA CLÍNICA" / "FAMILIA VINCULADA"; with `tone` a client status
   pill ("PROSPECTO" lavender). `HueChip(text:hue:systemImage:)` — a category (Lucide via `Glyph`). `CountBadge(count:)`.
 - `Avatar(name:imageURL:size:tint:)` (client initials on yellow 25%), `PetAvatar(name:species:photoURL:size:)` (warm face, cocoa glyph),

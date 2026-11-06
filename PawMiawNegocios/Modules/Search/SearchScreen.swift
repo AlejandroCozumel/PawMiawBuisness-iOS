@@ -507,6 +507,7 @@ private struct SearchOptionRow: View {
         case "overdue": return (L("Overdue"), .danger)
         case "paid": return (L("Paid"), .info)
         case "canceled": return (L("Canceled"), .muted)
+        case "forgiven": return (L("Balance forgiven"), .muted)
         default: return nil
         }
     }

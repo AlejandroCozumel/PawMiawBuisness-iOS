@@ -403,16 +403,18 @@ struct CashFinanceCortes: View {
 
     private static var groups: [(String, String)] { [
         ("refund", L("Refunds")), ("credit_note", L("Credit notes")), ("return", L("Returns")), ("refund_other_method", L("Refunded another way than paid")),
-        ("cancel", L("Cancellations")), ("discount", L("Discounts")), ("courtesy", L("Courtesies")), ("price_lowered", L("Lower prices")),
+        // "Saldo perdonado": what was left on a bill, forgiven by the business; each row opens the bill.
+        ("cancel", L("Cancellations")), ("forgiven", L("Balances forgiven")), ("discount", L("Discounts")), ("courtesy", L("Courtesies")), ("price_lowered", L("Lower prices")),
         ("no_charge", L("Visits without charge")), ("stay_no_bill", L("Check-outs without a bill")), ("cash_in", L("Cash in")), ("cash_out", L("Cash out")),
         ("cash_difference", L("Drawer differences")), ("backdated_payment", L("Backdated payments")),
     ] }
 
     @ViewBuilder private var exceptionsPanel: some View {
         if let exceptions {
-            let present = Self.groups.compactMap { group -> (String, [CashException])? in
+            let present = Self.groups.compactMap { group -> (String, [CashException], Int)? in
                 let items = exceptions.items.filter { $0.kind == group.0 }
-                return items.isEmpty ? nil : (group.1, items)
+                // The server's count for the kind, never below the rows shown.
+                return items.isEmpty ? nil : (group.1, items, max(exceptions.counts?[group.0] ?? 0, items.count))
             }
             panel(L("Exceptions of the day"), icon: "triangle-alert", aside: {
                 if exceptions.withoutReason > 0 {
@@ -426,7 +428,7 @@ struct CashFinanceCortes: View {
                         Text(L("Refunds, returns, cancels, big discounts, courtesies, lower prices, cash in and out, drawer differences and backdated payments: who, when, how much and why."))
                             .font(Theme.text(12)).foregroundStyle(Theme.inkSoft)
                         ForEach(present, id: \.0) { group in
-                            CashExceptionGroup(title: group.0, items: group.1, currency: exceptions.currency, day: exceptions.day, zone: exceptions.timeZone.flatMap(TimeZone.init(identifier:))) { shiftId in
+                            CashExceptionGroup(title: group.0, count: group.2, items: group.1, currency: exceptions.currency, day: exceptions.day, zone: exceptions.timeZone.flatMap(TimeZone.init(identifier:))) { shiftId in
                                 withAnimation { expanded = shiftId }
                             }
                         }
@@ -474,6 +476,8 @@ private struct CashFinCorteStat: View {
 /// One kind of exception: its first rows, then "Ver N más".
 private struct CashExceptionGroup: View {
     let title: String
+    /// The server's count for the kind (`counts`), never below the rows shown.
+    var count: Int? = nil
     let items: [CashException]
     let currency: String
     let day: String
@@ -483,7 +487,7 @@ private struct CashExceptionGroup: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("\(title) · \(items.count)".uppercased()).font(.brandText(10.6, weight: .heavy)).tracking(1.27).foregroundStyle(Theme.inkSoft)
+            Text("\(title) · \(count ?? items.count)".uppercased()).font(.brandText(10.6, weight: .heavy)).tracking(1.27).foregroundStyle(Theme.inkSoft)
             VStack(spacing: 0) {
                 ForEach(Array((all ? items : Array(items.prefix(5))).enumerated()), id: \.element.id) { index, item in
                     if index > 0 { RowDivider() }

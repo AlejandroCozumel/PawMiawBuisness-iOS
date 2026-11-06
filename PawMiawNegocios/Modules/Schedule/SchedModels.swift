@@ -156,6 +156,17 @@ struct SchedAppointment: Codable, Identifiable, Hashable {
     let feeDecision: String?
     let feeInvoiceId: String?
     let feeNote: String?
+    /// Who cancelled a cancelled visit: "family" (a fee may follow) or "business" (never a fee).
+    /// Nil for one cancelled before this was recorded, or from an older server (docs/family-money.md §5).
+    let cancelledBy: String?
+    /// While the family's ask to cancel waits: when it asked ("¿Quién cancela?" presets La familia).
+    let familyCancelAskedAt: String?
+    /// The family's own answer about whether the pet went, kept after the visit is closed ("attended" = "Sí fuimos").
+    let familyAnswer: String?
+    /// A no-show the family answered "Sí fuimos" afterwards: when it said so. It changes nothing by itself.
+    let disputedAt: String?
+    /// When the business took that answer off Home's "Te necesita" (the answer stays on the visit).
+    let disputeDismissedAt: String?
     let reportKind: String?
     let groomStage: String?
     let groomReadyNotifiedAt: String?
@@ -603,11 +614,17 @@ struct SchedInvoice: Codable, Identifiable, Hashable {
     let createdAt: String?
     let updatedAt: String?
     let lineItems: [SchedInvoiceLine]?
+    /// "Perdonar saldo": what was forgiven, by whom and why (docs/family-money.md §1). Absent from an older server.
+    let forgivenAmount: Int?
+    let forgivenReason: String?
+    let forgivenBy: SchedActor?
 }
 
 /// Where a visit's bill stands (web lib/visit-bill.ts `billStage`).
 enum SchedBillStage: String {
     case notStarted, noCharge, canceled, noBill, needsPrice, building, ready, partPaid, paid, covered
+    /// What was left was forgiven by the business ("Saldo perdonado", docs/family-money.md §1).
+    case forgiven
 
     static func of(visitStatus: String, noCharge: Bool, invoice: SchedInvoice?) -> SchedBillStage {
         guard let invoice else {
@@ -621,6 +638,8 @@ enum SchedBillStage: String {
             if noCharge { return .noCharge }
             return paid <= 0 && (visitStatus == "in_progress" || visitStatus == "completed") ? .noBill : .canceled
         }
+        // Forgiven is not paid: nothing more is asked, and it says so.
+        if invoice.status == "forgiven" { return .forgiven }
         if invoice.status == "paid" || (invoice.status != "draft" && balance <= 0) {
             return total == 0 ? .covered : .paid
         }
@@ -643,12 +662,13 @@ enum SchedBillStage: String {
         case .partPaid: L("Part paid")
         case .paid: L("Paid")
         case .covered: L("Nothing to charge")
+        case .forgiven: L("Balance forgiven")
         }
     }
 
     var state: ProviderState {
         switch self {
-        case .notStarted, .noCharge, .canceled, .noBill: .closed
+        case .notStarted, .noCharge, .canceled, .noBill, .forgiven: .closed
         case .needsPrice, .ready, .partPaid: .waiting
         case .building: .active
         case .paid, .covered: .done
@@ -696,4 +716,35 @@ struct SchedFeeRequired: Hashable {
     let kind: String
     let amount: Int
     let currency: String?
+    /// When the family asked to cancel, if it did (docs/family-money.md §5). Nil from an older server.
+    var familyAskedAt: String? = nil
+    /// What lateness was measured from: "family_ask" or "now"; nil for a no-show.
+    var measuredFrom: String? = nil
+}
+
+/// The answer to "Descartar" a family's "Sí fuimos" (POST /provider-appointments/{id}/dispute/dismiss).
+struct SchedDisputeDismissed: Decodable {
+    let appointmentId: String?
+    let disputeDismissedAt: String?
+}
+
+/// What the cancel sheet reads first (GET /provider-appointments/{id}/cancel-preview, docs/family-money.md §6):
+/// whether the family asked to cancel, and the fee if the family is the one cancelling. Every field optional.
+struct SchedCancelPreview: Decodable {
+    struct Fee: Decodable { let kind: String?; let amount: Int?; let currency: String? }
+    let familyAskedAt: String?
+    /// "¿Quién cancela?" preset: "family" when the family asked; nil leaves the choice open.
+    let suggestedCancelledBy: String?
+    let measuredFrom: String?
+    /// Cancelled by the family now, the late-cancellation fee applies. Never for the business.
+    let feeApplies: Bool?
+    let fee: Fee?
+    /// The business's late-cancel window; nil = never late.
+    let windowHours: Int?
+
+    /// The late-cancellation fee the family's cancel would take, when it applies.
+    var familyFee: SchedFeeRequired? {
+        guard feeApplies == true, let fee, let amount = fee.amount else { return nil }
+        return SchedFeeRequired(kind: "late_cancel", amount: amount, currency: fee.currency, familyAskedAt: familyAskedAt, measuredFrom: measuredFrom)
+    }
 }

@@ -21,6 +21,8 @@ import SwiftUI
 
 private enum SchedVisitSheet: Identifiable {
     case edit, checkIn, otherDay, finish, recordPast, noShow, cancel, rebook, walkIn, stopSeries, calendar
+    /// "Perdonar el cargo" on a no-show the family disputes: its fee bill (docs/family-money.md §5).
+    case forgiveFee(String)
     case gate(SchedGatePrompt)
     case admit(SchedAdmitPreset)
     case deposit(SchedDepositDue)
@@ -28,6 +30,7 @@ private enum SchedVisitSheet: Identifiable {
     var id: String {
         switch self {
         case .gate(let prompt): "gate-\(prompt.id)"
+        case .forgiveFee(let id): "forgive-\(id)"
         case .admit(let preset): "admit-\(preset.id)"
         case .deposit: "deposit"
         case .calendar: "calendar"
@@ -61,6 +64,9 @@ struct AppointmentDetailScreen: View {
     @State private var simpleStages = false
     @State private var reportMissing: [String]?
     @State private var hospStays: [SchedHospStay] = []
+    /// A disputed no-show's fee bill ("Sí fuimos"): "Perdonar el cargo" only while something is left on it.
+    @State private var disputedFee: CashInvoice?
+    @State private var dismissing = false
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
@@ -106,6 +112,10 @@ struct AppointmentDetailScreen: View {
             members = await team
             invoice = await bill
             loadError = nil
+            disputedFee = nil
+            if let a = appointment, workspace.can(.billingWaiveVisit), a.status == "no_show", a.disputedAt != nil, a.feeDecision == "charged", let fee = a.feeInvoiceId {
+                disputedFee = try? await API.get("/provider-invoices/\(fee)")
+            }
             if appointment?.serviceCategory == "groomer", appointment?.groomStage != nil {
                 let settings: SchedGroomSettings? = try? await API.get("/provider-grooming/settings")
                 simpleStages = settings?.simpleStages ?? false
@@ -364,6 +374,7 @@ struct AppointmentDetailScreen: View {
             case .noBill: check = SchedClosingCheck(id: "bill", label: L("Bill"), value: L("No bill yet"), state: .pending)
             case .noCharge: check = SchedClosingCheck(id: "bill", label: L("Bill"), value: L("No charge"), state: .ok)
             case .paid, .covered: check = SchedClosingCheck(id: "bill", label: L("Bill"), value: L("Paid"), state: .ok)
+            case .forgiven: check = SchedClosingCheck(id: "bill", label: L("Bill"), value: L("Balance forgiven"), state: .ok)
             default: check = SchedClosingCheck(id: "bill", label: L("Bill"), value: Money.format(f.stage == .building ? invoice?.totalAmount : f.collectAmount, currency: currency), state: .ok)
             }
             checks.append(check)
@@ -472,12 +483,18 @@ struct AppointmentDetailScreen: View {
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         if SchedVisitBanners.any(a) {
+            let forgive = workspace.can(.billingWaiveVisit)
             RowDivider()
             SchedVisitBanners(
                 appointment: a,
                 onEdit: f.edit ? { sheet = .edit } : nil,
                 onCancel: f.cancel ? { sheet = .cancel } : nil,
-                onKeep: f.edit ? { keepAsBooked(a) } : nil
+                onKeep: f.edit ? { keepAsBooked(a) } : nil,
+                // The fee charged for the no-show the family disputes: forgiven from here (its bill decides whether anything is left).
+                onForgiveFee: forgive && disputedFee != nil && disputedFee.map { CashBillRules.forgiveBlocker($0) == nil } == true
+                    ? { if let id = a.feeInvoiceId { sheet = .forgiveFee(id) } } : nil,
+                onDismissDispute: (f.edit || forgive) && a.disputeDismissedAt == nil ? { dismissDispute(a) } : nil,
+                dismissing: dismissing
             )
         }
     }
@@ -551,6 +568,7 @@ struct AppointmentDetailScreen: View {
             switch f.stage {
             case .paid: steps.append(.init(id: "pay", label: L("Payment"), value: L("Paid"), extra: invoice.map { Money.format($0.totalAmount, currency: currency) }, state: .done, systemImage: "circle-dollar-sign"))
             case .covered: steps.append(.init(id: "pay", label: L("Payment"), value: L("Nothing to charge"), state: .done, systemImage: "circle-dollar-sign"))
+            case .forgiven: steps.append(.init(id: "pay", label: L("Payment"), value: L("Balance forgiven"), extra: invoice?.forgivenAmount.flatMap { $0 > 0 ? Money.format($0, currency: currency) : nil }, state: .done, systemImage: "circle-dollar-sign"))
             case .noCharge: steps.append(.init(id: "pay", label: L("Payment"), value: L("No charge"), state: .done, systemImage: "circle-dollar-sign"))
             case .ready, .partPaid: steps.append(.init(id: "pay", label: L("Payment"), value: Money.format(f.collectAmount, currency: currency), extra: L("To pay"), state: .attention, systemImage: "circle-dollar-sign"))
             case .building: steps.append(.init(id: "pay", label: L("Payment"), value: Money.format(invoice?.totalAmount, currency: currency), extra: completed ? L("To pay") : L("On the bill"), state: completed ? .attention : .next, systemImage: "circle-dollar-sign"))
@@ -719,6 +737,8 @@ struct AppointmentDetailScreen: View {
             }
         case .gate(let prompt):
             SchedGateSheet(prompt: prompt)
+        case .forgiveFee(let id):
+            CashForgiveBillSheet(invoiceId: id, listed: disputedFee) { Task { await load() } }
         case .calendar:
             SchedCalendarSheet(appointment: a)
         case .admit(let preset):
@@ -794,6 +814,25 @@ struct AppointmentDetailScreen: View {
                 Toast.show(a.clientHouseholdId != nil ? L("Signed. The family can see it now.") : L("Signed. It is part of the chart now."))
                 announceDataChanged()
             } catch { Toast.error(error) }
+        }
+    }
+
+    /// "Descartar" a family's "Sí fuimos": off Home's "Te necesita"; the answer stays on the visit.
+    private func dismissDispute(_ a: SchedAppointment) {
+        guard !dismissing else { return }
+        dismissing = true
+        Task {
+            defer { dismissing = false }
+            do {
+                let _: SchedDisputeDismissed = try await API.post("/provider-appointments/\(a.id)/dispute/dismiss")
+                Toast.show(L("Dismissed. Their answer stays on the visit."))
+                announceDataChanged()
+                await load()
+            } catch let error as APIError where error.code == "no_dispute" {
+                Toast.error(L("The family has not answered this visit"))
+            } catch {
+                schedToast(error)
+            }
         }
     }
 

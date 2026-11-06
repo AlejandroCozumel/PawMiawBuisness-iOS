@@ -473,6 +473,8 @@ struct CashSaleRow: View {
     /// What happened to the sale after it was rung up; nothing for a plain paid one.
     static func state(_ sale: CashSaleSummary) -> (String, Chip.Tone)? {
         if sale.canceled { return (L("Canceled@sale"), .danger) }
+        // A sale left on account whose balance the business forgave ("Perdonar saldo").
+        if sale.status == "forgiven" { return (L("Balance forgiven"), .online) }
         if sale.returnedAmount >= sale.totalAmount && sale.totalAmount > 0 { return (L("Returned@sale"), .online) }
         if sale.returnedAmount > 0 { return (L("Part returned"), .online) }
         if sale.balanceDueAmount > 0 { return (L("Balance due"), .warn) }

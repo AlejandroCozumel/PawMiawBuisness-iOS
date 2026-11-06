@@ -36,13 +36,20 @@ struct SchedJourneyStep: Identifiable {
 
 // MARK: - Banners
 
-/// What the visit is waiting on: a request from the family, a missed visit's story (web
-/// `Banners`): full-width rows under the header's client line, each tinted by its tone.
+/// What the visit is waiting on: a request from the family, a missed visit's story (who cancelled
+/// it, its fee), and the family's "Sí fuimos" after a no-show with what the business can do about
+/// it (web `Banners`, docs/family-money.md §5): full-width rows under the header's client line,
+/// each tinted by its tone.
 struct SchedVisitBanners: View {
     let appointment: SchedAppointment
     var onEdit: (() -> Void)? = nil
     var onCancel: (() -> Void)? = nil
     var onKeep: (() -> Void)? = nil
+    /// "Perdonar el cargo": the no-show fee's bill, forgiven with a reason.
+    var onForgiveFee: (() -> Void)? = nil
+    /// "Descartar": off Home's "Te necesita"; the answer stays here.
+    var onDismissDispute: (() -> Void)? = nil
+    var dismissing: Bool = false
 
     private enum Tone { case warn, danger, info }
 
@@ -65,7 +72,18 @@ struct SchedVisitBanners: View {
                 banner(.warn, a.confirmationStatus == "declined" ? L("The family declined this visit") : L("The confirmation did not reach them"), a.clientPhone.map { LF("Call them: %@", $0) }) { EmptyView() }
             }
             if a.isGone {
-                banner(.danger, a.status == "no_show" ? L("They didn’t come") : L("Cancelled"), [outcome ?? a.cancelReason, fee].compactMap { $0?.nonEmpty }.joined(separator: " · ").nonEmpty) { EmptyView() }
+                // Who cancelled: the family (a fee may follow) or the business (never one). Older visits don't say.
+                let cancelled = a.cancelledBy == "family" ? L("Cancelled by the family") : a.cancelledBy == "business" ? L("Cancelled by your business") : L("Cancelled")
+                banner(.danger, a.status == "no_show" ? L("They didn’t come") : cancelled, [outcome ?? a.cancelReason, fee].compactMap { $0?.nonEmpty }.joined(separator: " · ").nonEmpty) { EmptyView() }
+            }
+            // "Sí fuimos": the family says the pet did come after the no-show was recorded. Nothing changes by itself.
+            if a.status == "no_show", let disputed = a.disputedAt {
+                banner(.warn, LF("The family says they did come (%@)", DateText.dayTime(DateText.parse(disputed))),
+                       a.disputeDismissedAt.map { LF("Dismissed on %@.", DateText.day($0)) }
+                        ?? (onForgiveFee != nil ? L("You decide: forgive the fee or dismiss it. Nothing changes by itself.") : L("Nothing changes by itself."))) {
+                    if let onForgiveFee { PMButton(L("Forgive the fee"), systemImage: "hand-heart", size: .header, action: onForgiveFee) }
+                    if let onDismissDispute { PMButton(L("Dismiss"), variant: .outline, size: .header, isWorking: dismissing, action: onDismissDispute) }
+                }
             }
             if a.status == "completed" && a.noCharge == true {
                 banner(.info, L("Finished with no charge."), a.noChargeReason) { EmptyView() }
@@ -81,6 +99,7 @@ struct SchedVisitBanners: View {
     static func any(_ a: SchedAppointment) -> Bool {
         (a.status == "scheduled" && ["reschedule_requested", "cancellation_requested", "delivery_failed", "expired", "declined"].contains(a.confirmationStatus ?? ""))
             || a.isGone || (a.status == "completed" && a.noCharge == true)
+            || (a.status == "no_show" && a.disputedAt != nil)
             || (a.arrivalNote?.nonEmpty != nil && (a.status == "checked_in" || a.status == "in_progress"))
     }
 
@@ -635,6 +654,15 @@ struct SchedVisitBillCard: View {
                     FactRow(label: L("Total"), value: Money.format(invoice.totalAmount, currency: currency))
                     if (invoice.amountPaid ?? 0) > 0 { FactRow(label: L("Paid"), value: Money.format(invoice.amountPaid, currency: currency)) }
                     if invoice.status != "draft" { FactRow(label: L("Balance"), value: Money.format(invoice.balanceDueAmount, currency: currency)) }
+                    if stage == .forgiven {
+                        // "Perdonar saldo" (docs/family-money.md §1): what was left will not be collected.
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text((invoice.forgivenAmount ?? 0) > 0 ? LF("Balance forgiven: %@", Money.format(invoice.forgivenAmount, currency: currency)) : L("Balance forgiven"))
+                                .font(Theme.text(14, weight: .bold)).foregroundStyle(Theme.inkStrong)
+                            Text([invoice.forgivenBy?.name?.nonEmpty, invoice.forgivenReason?.nonEmpty].compactMap { $0 }.joined(separator: " · ").nonEmpty ?? L("Nothing more to charge."))
+                                .font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
+                        }
+                    }
                     HStack(spacing: 8) {
                         if canCollect {
                             NavigationLink(value: ProviderRoute.invoice(invoice.id)) {

@@ -61,8 +61,35 @@ struct ClientsMergeResult: Decodable {
 }
 
 private struct ClientsUnlinkResult: Decodable {
+    struct Forgiven: Decodable { let count: Int; let amount: Int }
     let status: String?
     let clientUnlinked: Bool?
+    /// What was done with the bills (keep, forgive, not_theirs); nil when the family stays linked
+    /// through another pet, or from an older server.
+    let openBills: String?
+    /// `openBills: forgive`: how many bills and how much was forgiven.
+    let forgiven: Forgiven?
+}
+
+/// What unlinking a pet would do to the client's bills (GET …/unlink-preview, paw-miaw-backend
+/// docs/family-money.md §1 and §6), read before the sheet asks. Every field optional.
+private struct ClientsUnlinkPreview: Decodable {
+    struct Owed: Decodable { let currency: String?; let amount: Int?; let count: Int? }
+    /// No other pet of this client is linked: the unlink clears the family and the choice applies.
+    let clearsHousehold: Bool?
+    /// What the client owes, by currency; empty when nothing.
+    let owed: [Owed]?
+    /// Bills paid, even in part: they stay with the family whatever is chosen.
+    let paidCount: Int?
+
+    /// The owed rows with something on them.
+    var owing: [Owed] { (owed ?? []).filter { ($0.amount ?? 0) > 0 } }
+    /// The unlink asks what happens to the open bills only when it clears the family and something is owed.
+    var asksAboutBills: Bool { clearsHousehold == true && !owing.isEmpty }
+    /// How many open bills, over every currency.
+    var owedCount: Int { (owed ?? []).reduce(0) { $0 + ($1.count ?? 0) } }
+    /// "$1,200.00" or, owed in two currencies, "$1,200.00 + US$40.00".
+    var owedAmounts: String { owing.map { Money.format($0.amount, currency: $0.currency) }.joined(separator: " + ") }
 }
 
 /// The match suggestions and their words (linking-model.ts, linking-copy.ts).
@@ -125,6 +152,8 @@ enum ClientsMatches {
         case "different_households": return L("They are linked to different PawMiaw families")
         case "different_household_pets": return L("They are linked to different pets in PawMiaw")
         case "not_linked": return L("This pet is not linked to PawMiaw")
+        case "reason_required": return L("Say why the balance is forgiven.")
+        case "forgive_forbidden": return L("You can’t forgive balances. Ask an owner or admin.")
         default: break
         }
         if api.status == 403 { return L("You do not have permission to change clients") }
@@ -816,39 +845,121 @@ struct ClientsUnlinkTarget: Identifiable, Hashable {
     let petName: String
 }
 
+/// Desvincular: the clinic keeps its pet and all its history, the family's PawMiaw pet stops
+/// being shared with the clinic. Before it asks, it reads what the unlink would do to the bills
+/// (GET …/unlink-preview): when this is the client's last linked pet and they owe something, it
+/// says how much and asks what happens to it — Seguir cobrando (the default: the family keeps
+/// seeing it), Perdonar el saldo (billing.waive_visit, with a reason) or Era otra familia (what
+/// was never paid leaves their PawMiaw). Whatever is chosen, the family keeps its receipts. An
+/// older server (no preview) unlinks as before, sending nothing.
 struct ClientsUnlinkPetSheet: View {
     let target: ClientsUnlinkTarget
     var onDone: () async -> Void = {}
 
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var form = FormState()
     @State private var working = false
+    @State private var reading = true
+    @State private var preview: ClientsUnlinkPreview?
+    /// "keep", "forgive" or "not_theirs".
+    @State private var choice = "keep"
+    @State private var reason = ""
+
+    private var asks: Bool { preview?.asksAboutBills ?? false }
+    private var canForgive: Bool { Workspace.shared.can(.billingWaiveVisit) }
 
     var body: some View {
-        ProviderModal(title: LF("Unlink %@?", target.petName), subtitle: L("From the family’s PawMiaw"), systemImage: "link-2-off", accent: .pink, primaryTitle: L("Unlink"), primaryVariant: .destructive, isWorking: working, cancelTitle: L("Keep it linked"), primaryIcon: "link-2-off") {
+        ProviderModal(title: LF("Unlink %@?", target.petName), subtitle: L("From the family’s PawMiaw"), systemImage: "link-2-off", accent: .pink, isDirty: choice != "keep" || !reason.isEmpty, form: form, primaryTitle: L("Unlink"), primaryVariant: .destructive, isWorking: working, cancelTitle: L("Keep it linked"), primaryIcon: "link-2-off", primaryDisabled: reading) {
             unlink()
         } content: {
             VStack(alignment: .leading, spacing: 10) {
                 ClientsWhatHappensLine(text: LF("Your clinic keeps its copy of %@, with every visit, record and invoice.", target.petName), tint: Theme.pink)
                 ClientsWhatHappensLine(text: LF("The family stops sharing %@ with your clinic: what they add in PawMiaw no longer reaches you, and what you write no longer reaches them.", target.petName), tint: Theme.pink)
                 ClientsWhatHappensLine(text: L("If it was the wrong pet, unlink it and invite the family again to link the right one."), tint: Theme.pink)
+                // Said whatever is chosen: paid bills never leave the family that paid them.
+                ClientsWhatHappensLine(text: receiptsLine, tint: Theme.pink)
+            }
+            if reading {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(L("Checking what they owe…")).font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
+                }
+            } else if asks, let preview {
+                ModalSection(title: L("What happens to what they owe?")) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        (Text(LF("They owe you %@", preview.owedAmounts)).fontWeight(.bold).foregroundColor(Theme.inkStrong)
+                         + Text(" · " + LP(preview.owedCount, "%d open bill", "%d open bills")).foregroundColor(Theme.inkSoft))
+                            .font(Theme.text(14))
+                        OptionCards(options: choices, selection: Binding(get: { choice }, set: { choice = $0; form.clear("reason") }))
+                        if choice == "forgive" {
+                            PMTextField(L("Why is it forgiven?"), text: $reason, key: "reason", form: form, prompt: L("e.g. The family moved away, a courtesy"), hint: L("Only your team sees the reason. It shows in Cortes as an exception."), multiline: true, required: true, lines: 2...5)
+                        }
+                    }
+                }
             }
         }
         .presentationDetents([.medium, .large])
+        .task { await loadPreview() }
+    }
+
+    private var choices: [OptionCard<String>] {
+        var list = [OptionCard("keep", title: L("Keep charging"), description: L("The family keeps seeing what they owe and their receipts."), icon: "hand-coins", accent: Theme.pink)]
+        if canForgive {
+            list.append(OptionCard("forgive", title: L("Forgive the balance"), description: L("Everything pending is forgiven."), icon: "hand-heart", accent: Theme.pink))
+        }
+        list.append(OptionCard("not_theirs", title: L("It was another family"), description: L("What was never paid stops showing in their PawMiaw; what was paid stays with whoever paid it."), icon: "users", accent: Theme.pink))
+        return list
+    }
+
+    private var receiptsLine: String {
+        let paid = preview?.paidCount ?? 0
+        if paid <= 0 { return L("The family keeps its receipts.") }
+        return paid == 1
+            ? L("The family keeps its receipts: 1 paid bill stays in their PawMiaw.")
+            : LF("The family keeps its receipts: %d paid bills stay in their PawMiaw.", paid)
+    }
+
+    /// An older server answers 404 (or anything fails): no question, the unlink goes as before.
+    private func loadPreview() async {
+        reading = true
+        defer { reading = false }
+        preview = try? await API.get("/provider-clients/\(target.clientId)/pets/\(target.petId)/unlink-preview")
     }
 
     private func unlink() {
+        guard form.check([("reason", asks && choice == "forgive" && reason.nonEmpty == nil ? L("Say why the balance is forgiven.") : nil)]) else { return }
+        var body: [String: Any?] = [:]
+        if asks {
+            body["openBills"] = choice
+            if choice == "forgive" { body["reason"] = reason.trimmingCharacters(in: .whitespacesAndNewlines) }
+        }
+        let shown = preview
         working = true
         Task {
             defer { working = false }
             do {
-                let result: ClientsUnlinkResult = try await API.post("/provider-clients/\(target.clientId)/pets/\(target.petId)/unlink")
-                Toast.show(result.clientUnlinked == true ? LF("%1$@ unlinked. %2$@ is no longer linked to a PawMiaw family.", target.petName, target.clientName) : LF("%@ unlinked.", target.petName))
+                let result: ClientsUnlinkResult = try await API.post("/provider-clients/\(target.clientId)/pets/\(target.petId)/unlink", body: body)
+                Toast.show(message(result, shown))
                 announceDataChanged()
                 await onDone()
                 dismiss()
+            } catch let error as APIError where error.code == "reason_required" {
+                _ = form.check([("reason", L("Say why the balance is forgiven."))])
             } catch {
                 Toast.error(ClientsMatches.errorText(error))
             }
         }
+    }
+
+    /// Unlinked, and what happened to the bills (forgiven: how much, when one currency says it).
+    private func message(_ result: ClientsUnlinkResult, _ preview: ClientsUnlinkPreview?) -> String {
+        let pet = target.petName
+        if result.openBills == "forgive", let forgiven = result.forgiven, forgiven.count > 0 {
+            let currencies = preview?.owing ?? []
+            if currencies.count == 1 { return LF("%1$@ unlinked. %2$@ forgiven.", pet, Money.format(forgiven.amount, currency: currencies[0].currency)) }
+            return forgiven.count == 1 ? LF("%@ unlinked. 1 bill forgiven.", pet) : LF("%1$@ unlinked. %2$d bills forgiven.", pet, forgiven.count)
+        }
+        if result.openBills == "not_theirs" { return LF("%@ unlinked. What was never paid left their PawMiaw.", pet) }
+        return result.clientUnlinked == true ? LF("%1$@ unlinked. %2$@ is no longer linked to a PawMiaw family.", pet, target.clientName) : LF("%@ unlinked.", pet)
     }
 }

@@ -80,6 +80,10 @@ struct ClientsClient: Codable, Identifiable, Hashable {
     let linkedAccountName: String?
     let businessLinkedAt: String?
     let canBookOnline: Bool?
+    /// When an unlink cleared the family, and which side did it ("family" / "business"):
+    /// "Se desconectó de PawMiaw el {fecha}" (docs/family-money.md §1). Nil while linked or never linked.
+    let disconnectedAt: String?
+    let disconnectedBy: String?
     let ownerEmail: String?
     let recipientLanguage: String?
     let ownerPhone: String?

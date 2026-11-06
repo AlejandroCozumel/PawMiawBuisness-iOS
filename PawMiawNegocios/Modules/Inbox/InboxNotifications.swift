@@ -134,6 +134,8 @@ enum InboxNotificationText {
         "routine_course_ending", "routine_course_ended", "provider_appointment", "provider_appointment_confirmation",
         "provider_client_invitation", "provider_follow_up", "provider_invoice", "provider_link_request",
         "provider_paperwork_late", "provider_paperwork_today", "provider_record", "record", "records_documentation", "routine",
+        // A family's "Sí fuimos" after a no-show (docs/family-money.md §5): the business decides on the visit.
+        "visit_dispute",
     ]
 
     /// A notice whose date can be missed (a task, a dose); an event's date is when it happened.
@@ -247,6 +249,8 @@ enum InboxNotificationText {
         case "appointment_confirmation": return L("Confirm appointment")
         case "appointment_reschedule": return L("Review change")
         case "provider_appointment": return L("Open visit@notification")
+        // A family's "Sí fuimos" after a no-show: the visit, where the business decides.
+        case "visit_dispute": return L("Open visit@notification")
         case "household_appointment", "appointment": return L("View appointment")
         case "stay": return L("Open stay")
         case "provider_record": return L("Open record")
@@ -272,7 +276,7 @@ enum InboxNotificationText {
     /// Where a tap goes (lib/notification-routing.ts `getNotificationActionUrl`), as a screen of the app.
     static func route(_ n: InboxNotification) -> ProviderRoute? {
         let generic: Set<String> = ["/app/notifications", "/provider/notifications"]
-        let knownFallback: Set<String> = ["provider_appointment", "provider_follow_up", "provider_record", "records_documentation", "provider_invoice", "invoice", "billing", "client_message"]
+        let knownFallback: Set<String> = ["provider_appointment", "visit_dispute", "provider_follow_up", "provider_record", "records_documentation", "provider_invoice", "invoice", "billing", "client_message"]
         let source = n.sourceType ?? ""
         if source.hasPrefix("hospital"), let url = n.actionUrl, !url.hasPrefix("/provider") {
             if let route = InboxRoutes.route(url) { return route }
@@ -284,6 +288,8 @@ enum InboxNotificationText {
         let id = n.sourceId?.nonEmpty
         switch source {
         case "provider_appointment": return id.map { ProviderRoute.appointment($0) }
+        // `{appointmentId}:disputed:{at}`.
+        case "visit_dispute": return id.flatMap { $0.split(separator: ":").first.map { ProviderRoute.appointment(String($0)) } }
         case "provider_follow_up": return .section(.records)
         case "provider_record", "records_documentation": return id.map { ProviderRoute.record($0) } ?? .section(.records)
         case "provider_invoice", "invoice", "billing": return .section(.invoices)

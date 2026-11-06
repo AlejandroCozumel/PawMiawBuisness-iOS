@@ -6,8 +6,11 @@
 //  visits/visit-money-sheets RefundSheet, invoices-page/cancel-invoice-sheet.tsx):
 //  its lines, tax, discount, payments and credit notes, and what can be done
 //  with it — charge it, send it to the desk, edit it, refund or credit it,
-//  cancel it, bill it again, open or email its receipt. Level 1 (the bill in
-//  front of you) reads it; each action follows its own permission.
+//  forgive what is left ("Perdonar saldo", web invoices-page/forgive-invoice-
+//  sheet.tsx, paw-miaw-backend docs/family-money.md §1), cancel it, bill it
+//  again, open or email its receipt. A forgiven bill says what was forgiven,
+//  when, by whom and why, and takes no payment, edit or cancel. Level 1 (the
+//  bill in front of you) reads it; each action follows its own permission.
 //
 
 import SwiftUI
@@ -22,6 +25,7 @@ struct InvoiceDetailScreen: View {
     @State private var again = false
     @State private var refunding = false
     @State private var canceling = false
+    @State private var forgiving = false
     @State private var emailing = false
     @State private var sending = false
     @State private var pendingPay = false
@@ -63,6 +67,9 @@ struct InvoiceDetailScreen: View {
         }
         .sheet(isPresented: $canceling) {
             if let bill = loader.value { CashCancelBillSheet(bill: bill) { Task { await loader.load() } } }
+        }
+        .sheet(isPresented: $forgiving) {
+            if let bill = loader.value { CashForgiveBillSheet(invoiceId: bill.id, listed: bill) { Task { await loader.load() } } }
         }
     }
 
@@ -144,6 +151,7 @@ struct InvoiceDetailScreen: View {
         let late = CashBillRules.isOverdue(bill, today: today)
         let draft = bill.status == "draft"
         let canceled = bill.status == "canceled"
+        let forgiven = bill.status == "forgiven"
         let canFinalize = workspace.can(.billingFinalizeInvoice)
         let chip = CashBillRules.chip(bill, today: today, canFinalize: canFinalize)
         let walkIn = CashBillRules.isWalkIn(bill)
@@ -179,6 +187,23 @@ struct InvoiceDetailScreen: View {
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.surfaceMuted, in: RoundedRectangle(cornerRadius: Theme.chipRadius, style: .continuous))
+            } else if forgiven {
+                // "Saldo perdonado {monto} · {fecha} · {quién}", then why: the business's own record of it.
+                VStack(alignment: .leading, spacing: 2) {
+                    Text([
+                        LF("Balance forgiven %@", money(bill.forgivenAmount ?? 0)),
+                        bill.forgivenAt.map { CashBillRules.dateTime($0) },
+                        bill.forgivenBy?.name?.nonEmpty,
+                    ].compactMap { $0 }.joined(separator: " · "))
+                        .font(Theme.text(14, weight: .bold)).foregroundStyle(Theme.inkStrong)
+                    if let reason = bill.forgivenReason?.nonEmpty { Text("“\(reason)”").font(Theme.text(14)).foregroundStyle(Theme.inkStrong) }
+                    Text(L("The family sees “Balance forgiven” in its receipts; the reason stays with your team."))
+                        .font(Theme.text(12)).foregroundStyle(Theme.inkSoft)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(RoundedRectangle(cornerRadius: Theme.chipRadius, style: .continuous).strokeBorder(Theme.borderSoft, lineWidth: 1))
             } else if late {
                 let days = CashBillRules.daysLate(bill, today: today)
                 Text((days == 0 ? L("Marked overdue") : CashText.daysLate(days)) + (bill.dueAt.map { " · " + LF("Due %@", CashBillRules.day($0)) } ?? ""))
@@ -210,7 +235,8 @@ struct InvoiceDetailScreen: View {
         let billAgain = CashBillRules.canBillAgain(bill, workspace)
         let refund = CashBillRules.canRefund(bill, workspace)
         let cancel = CashBillRules.canCancel(bill, workspace)
-        if source != nil || openClient || store || billAgain || refund || cancel {
+        let forgive = CashBillRules.canForgive(bill, workspace)
+        if source != nil || openClient || store || billAgain || refund || forgive || cancel {
             FlowLayout(spacing: 6) {
                 if let source {
                     NavigationLink(value: source) { CashLinkChip(title: CashBillRules.sourceLabel(source), icon: "external-link") }.buttonStyle(.plain)
@@ -226,6 +252,9 @@ struct InvoiceDetailScreen: View {
                 }
                 if refund {
                     Button { refunding = true } label: { CashLinkChip(title: L("Refund or credit note"), icon: "undo-2", danger: true) }.buttonStyle(.plain)
+                }
+                if forgive {
+                    Button { forgiving = true } label: { CashLinkChip(title: L("Forgive the balance"), icon: "hand-heart", danger: true) }.buttonStyle(.plain)
                 }
                 if cancel {
                     Button { canceling = true } label: { CashLinkChip(title: L("Cancel the bill"), icon: "ban", danger: true) }.buttonStyle(.plain)
@@ -280,6 +309,9 @@ struct InvoiceDetailScreen: View {
                     } else {
                         CashBillTotalRow(label: isSale ? L("Returned") : moneyBack > 0 ? L("Refunded") : credited > 0 ? L("Credit notes") : L("Refunded or credited"), value: "−\(money(returned))")
                     }
+                }
+                if let forgiven = bill.forgivenAmount, forgiven > 0 {
+                    CashBillTotalRow(label: L("Forgiven@amount"), value: "−\(money(forgiven))")
                 }
                 if !draft && bill.status != "canceled" {
                     CashBillTotalRow(label: L("Paid@amount"), value: money(bill.amountPaid))
@@ -571,6 +603,118 @@ struct CashCancelBillSheet: View {
             } catch let error as APIError where error.code == "stale_bill" {
                 onDone()
                 throw APIError(status: 409, message: L("Someone changed this bill a moment ago — look at it again before canceling."), code: error.code, fields: [:])
+            }
+        }
+    }
+}
+
+// MARK: - Forgiving what is left
+
+/// "Perdonar saldo" (web invoices-page/forgive-invoice-sheet.tsx, paw-miaw-backend
+/// docs/family-money.md §1 and §6): what is left on a bill out of draft is forgiven, with a
+/// reason the business keeps (the family only reads "Saldo perdonado"). Said before it is
+/// done: the amount, that it is an exception in Cortes, that it leaves Te deben and is not
+/// income, and that what was paid stays paid. Permission `billing.waive_visit`; callers only
+/// offer it to those who have it. Opened from a bill (Cuentas' row and the bill's page), from a
+/// visit whose fee the family disputes and from Home's "Te necesita": the bill is read in full
+/// here, so its id is enough. POST /provider-invoices/{id}/forgive with the bill's revision.
+struct CashForgiveBillSheet: View {
+    let invoiceId: String
+    /// A copy the caller already has (a list row), shown while the bill is read.
+    var listed: CashInvoice? = nil
+    var onDone: () -> Void = {}
+
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var form = FormState()
+    @State private var bill: CashInvoice?
+    @State private var reason = ""
+    @State private var working = false
+    @State private var failed = false
+
+    private var shown: CashInvoice? { bill ?? (listed?.id == invoiceId ? listed : nil) }
+    private var blocker: String? { shown.flatMap { CashBillRules.forgiveBlocker($0) } }
+
+    var body: some View {
+        let amount = shown.map { cashMoney($0.balanceDueAmount, $0.currency) } ?? ""
+        let ready = shown != nil && blocker == nil
+        ProviderModal(
+            title: ready ? LF("Forgive %1$@ of %2$@?", amount, shown?.invoiceNumber ?? "") : L("Forgive the balance"),
+            subtitle: L("It is recorded as an exception in Cortes. The family sees “Balance forgiven”."),
+            systemImage: "hand-heart", accent: .pink, isDirty: !reason.isEmpty, form: form,
+            primaryTitle: ready ? LF("Forgive %@", amount) : L("Forgive the balance"), primaryVariant: .destructive,
+            isWorking: working, cancelTitle: L("Keep charging"), primaryIcon: "hand-heart", primaryDisabled: shown == nil
+        ) {
+            confirm()
+        } content: {
+            if let shown {
+                if let blocker {
+                    Text(CashBillRules.forgiveRefusalText(blocker) ?? L("This bill can’t be forgiven now."))
+                        .font(Theme.text(14, weight: .semibold)).foregroundStyle(Theme.destructive)
+                } else {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(L("It leaves what the client owes, Te deben and To charge, and doesn’t count as income."))
+                        if shown.amountPaid > 0 {
+                            Text(LF("What was paid (%@) stays paid.", cashMoney(shown.amountPaid, shown.currency)))
+                        }
+                    }
+                    .font(Theme.text(14)).foregroundStyle(Theme.inkStrong)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .overlay(RoundedRectangle(cornerRadius: Theme.boxRadius, style: .continuous).strokeBorder(Theme.borderSoft, lineWidth: 1))
+                    PMTextField(L("Why is it forgiven?"), text: $reason, key: "reason", form: form, prompt: L("e.g. The family moved away, a courtesy, a dispute settled"), hint: L("Only your team sees the reason."), multiline: true, required: true, lines: 2...5)
+                }
+            } else if failed {
+                ErrorState(message: L("That bill could not be found.")) { await load() }
+            } else {
+                LoadingState()
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .task { await load() }
+    }
+
+    private func load() async {
+        do {
+            bill = try await API.get("/provider-invoices/\(invoiceId)")
+            failed = false
+        } catch {
+            if shown == nil { failed = true }
+        }
+    }
+
+    private func confirm() {
+        guard let shown else { return }
+        if let blocker {
+            Toast.error(CashBillRules.forgiveRefusalText(blocker) ?? L("This bill can’t be forgiven now."))
+            return
+        }
+        guard form.check([("reason", reason.nonEmpty == nil ? L("Say why the balance is forgiven.") : nil)]) else { return }
+        var body: [String: Any?] = ["reason": reason.trimmingCharacters(in: .whitespacesAndNewlines)]
+        if let revision = shown.revision { body["expectedRevision"] = revision }
+        working = true
+        Task {
+            defer { working = false }
+            do {
+                let forgiven: CashInvoice = try await API.post("/provider-invoices/\(shown.id)/forgive", body: body)
+                Toast.show(LF("%1$@ of %2$@ forgiven.", cashMoney(forgiven.forgivenAmount ?? shown.balanceDueAmount, shown.currency), shown.invoiceNumber))
+                announceDataChanged()
+                onDone()
+                dismiss()
+            } catch let error as APIError {
+                if error.code == "reason_required" {
+                    _ = form.check([("reason", L("Say why the balance is forgiven."))])
+                } else if error.code == "stale_bill" {
+                    Toast.error(CashBillRules.forgiveRefusalText("stale_bill") ?? error.message)
+                    onDone()
+                    dismiss()
+                } else if let code = error.code, let text = CashBillRules.forgiveRefusalText(code) {
+                    Toast.error(text)
+                } else {
+                    Toast.error(errorText(error, fallback: L("Could not forgive the balance.")))
+                }
+            } catch {
+                Toast.error(errorText(error, fallback: L("Could not forgive the balance.")))
             }
         }
     }

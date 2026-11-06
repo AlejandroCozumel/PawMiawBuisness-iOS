@@ -842,3 +842,14 @@
 "Expires %@@ask" = "Vence %@";
 "%d change of time to answer." = "%d cambio de hora por contestar.";
 "%d changes of time to answer." = "%d cambios de hora por contestar.";
+
+/* "Sí fuimos" on Home's "Te necesita" (docs/family-money.md §5). */
+"They say they came" = "Dicen que sí vinieron";
+"Recorded as no-shows. You decide: forgive the fee or dismiss it." = "Se marcaron como no asistió. Tú decides: perdonar el cargo o descartarlo.";
+"fee %@" = "cargo %@";
+"said so %@" = "lo dijo el %@";
+"Forgive the fee" = "Perdonar el cargo";
+"Dismissed. Their answer stays on the visit." = "Descartado. Su respuesta se queda en la visita.";
+"Balance forgiven" = "Saldo perdonado";
+/* What families see of the fee (docs/family-money.md §5). */
+"Families see this fee, and until when they can cancel without it, when they book and on every visit." = "Las familias ven este cargo y hasta cuándo cancelar sin cargo al reservar y en cada cita.";

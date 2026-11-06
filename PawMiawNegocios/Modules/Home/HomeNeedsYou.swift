@@ -93,6 +93,20 @@ struct HomeNeedsYou: View {
             })
         }
 
+        // "Sí fuimos": families who say the pet did come to a visit recorded as a no-show (docs/family-money.md §5).
+        // Amber like the visits left open: the business decides — forgive the fee or dismiss — and nothing changes by itself.
+        if let disputes = needs?.disputes, (disputes.count ?? 0) > 0 {
+            let items = disputes.items ?? []
+            let more = (disputes.count ?? 0) - items.count
+            push("disputes", NeedsCard(title: L("They say they came"), icon: "message-circle-question", count: disputes.count,
+                                       hint: L("Recorded as no-shows. You decide: forgive the fee or dismiss it."),
+                                       tone: Theme.mango, attention: .amber, more: max(0, more)) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    HomeDisputeRow(item: item, canForgive: permissions.forgive, canDismiss: permissions.edit || permissions.forgive, first: index == 0, open: open)
+                }
+            })
+        }
+
         // "Por cobrar": red while one is from an earlier day — it leads, like any other day-late problem — amber for today's.
         if let charging = needs?.charging, (charging.count ?? 0) > 0 {
             let late = (charging.earlierDays?.count ?? 0) > 0
@@ -468,6 +482,47 @@ private struct HomeUnfinishedRow: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { open(.appointment(item.id)) }
+    }
+}
+
+/// A family's "Sí fuimos" after a no-show: the visit opens; "Perdonar el cargo" forgives its fee bill over
+/// Home, "Descartar" takes it off (the answer stays on the visit).
+private struct HomeDisputeRow: View {
+    let item: HomeDispute
+    let canForgive: Bool
+    let canDismiss: Bool
+    let first: Bool
+    let open: (ProviderRoute) -> Void
+    @Environment(HomeActions.self) private var actions: HomeActions?
+
+    var body: some View {
+        let owed = item.fee.flatMap { fee in (fee.balance ?? 0) > 0 ? Money.format(fee.balance, currency: fee.currency) : nil }
+        let forgive = canForgive ? item.feeInvoiceId : nil
+        VStack(alignment: .leading, spacing: 0) {
+            NeedsRow(
+                title: "\(item.petName ?? "—") · \(item.serviceLabel ?? "")",
+                hint: [
+                    [DateText.day(item.startsAt), item.clientName, owed.map { LF("fee %@", $0) }].compactMap { $0?.nonEmpty }.joined(separator: " · "),
+                    item.disputedAt.map { LF("said so %@", DateText.day($0)) },
+                ].compactMap { $0 }.joined(separator: "\n"),
+                first: first
+            ) { Glyph("chevron-right", size: 16).foregroundStyle(Theme.inkSoft) }
+            .contentShape(Rectangle())
+            .onTapGesture { open(.appointment(item.appointmentId)) }
+            .accessibilityAddTraits(.isButton)
+            // The actions under the row, as the web: forgive the fee (when one is charged) or dismiss.
+            if let actions, forgive != nil || canDismiss {
+                HStack(spacing: 6) {
+                    if let forgive {
+                        PMButton(L("Forgive the fee"), systemImage: "hand-heart", variant: .outline, size: .compact) { actions.forgiveFee(forgive) }
+                    }
+                    if canDismiss {
+                        PMButton(L("Dismiss"), variant: .ghost, size: .compact, isWorking: actions.isBusy("dispute-\(item.appointmentId)")) { actions.dismissDispute(item.appointmentId) }
+                    }
+                }
+                .padding(.bottom, 6)
+            }
+        }
     }
 }
 

@@ -580,3 +580,12 @@
 "Enter %@ to continue" = "Escribe %@ para continuar";
 "What you wrote here won't be saved." = "Lo que escribiste aquí no se guardará.";
 "Services · %@" = "Servicios · %@";
+
+/* "Se desconectó" (docs/family-money.md §1): an unlink cleared the family (either side). */
+"Disconnected from PawMiaw on %@" = "Se desconectó de PawMiaw el %@";
+"Unlinked on %@" = "Desvinculado el %@";
+"The family unlinked itself. What they owe from before stays theirs, and a reminder in PawMiaw still reaches them." = "La familia se desvinculó. Lo que debe de antes sigue siendo suyo, y un recordatorio en PawMiaw todavía le llega.";
+"Your business unlinked them. What they owe from before stays theirs, and a reminder in PawMiaw still reaches them." = "Tu negocio los desvinculó. Lo que deben de antes sigue siendo suyo, y un recordatorio en PawMiaw todavía les llega.";
+
+/* A bill whose balance the business forgave ("Perdonar saldo"). */
+"Balance forgiven" = "Saldo perdonado";

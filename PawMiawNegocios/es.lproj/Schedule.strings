@@ -1102,3 +1102,32 @@
 "Moved to %@. The family has been told." = "Cambiada a %@. Ya le avisamos a la familia.";
 "Change accepted. The family has been told." = "Cambio aceptado. Ya le avisamos a la familia.";
 "Change declined. The visit keeps its time and the family has been told." = "Cambio rechazado. La visita sigue a su hora y ya le avisamos a la familia.";
+
+/* "¿Quién cancela?" (docs/family-money.md §5). */
+"Who cancels?" = "¿Quién cancela?";
+"The family" = "La familia";
+"We do" = "Nosotros";
+"It’s late: the %@ fee can apply." = "Es tarde: puede aplicar el cargo de %@.";
+"No fee applies." = "No aplica ningún cargo.";
+"Someone is sick, the business closes…: never a fee." = "Alguien se enfermó, el negocio cierra…: nunca hay cargo.";
+"The family asked to cancel on %@." = "La familia pidió cancelar el %@.";
+"They asked %d h ahead." = "Pidió con %d h de anticipación.";
+"Choose who cancels." = "Elige quién cancela.";
+"Checking the cancellation terms…" = "Revisando las condiciones de cancelación…";
+"Your business is cancelling: no fee is charged to the family." = "Cancela tu negocio: a la familia no se le cobra ningún cargo.";
+"The business is cancelling: no fee is charged to the family" = "Cancela el negocio: a la familia no se le cobra ningún cargo";
+"Cancelled by the family" = "Cancelada por la familia";
+"Cancelled by your business" = "Cancelada por tu negocio";
+/* The family's "Sí fuimos" after a no-show: the business decides. */
+"The family says they did come (%@)" = "La familia dice que sí vino (%@)";
+"You decide: forgive the fee or dismiss it. Nothing changes by itself." = "Tú decides: perdonar el cargo o descartarlo. Nada cambia por sí solo.";
+"Nothing changes by itself." = "Nada cambia por sí solo.";
+"Dismissed on %@." = "Descartado el %@.";
+"Forgive the fee" = "Perdonar el cargo";
+"Dismissed. Their answer stays on the visit." = "Descartado. Su respuesta se queda en la visita.";
+"The family has not answered this visit" = "La familia no ha respondido sobre esta visita";
+/* A visit's bill forgiven ("Perdonar saldo"). */
+"Balance forgiven" = "Saldo perdonado";
+"Balance forgiven: %@" = "Saldo perdonado: %@";
+"Nothing more to charge." = "No hay nada más que cobrar.";
+"Dismiss" = "Descartar";

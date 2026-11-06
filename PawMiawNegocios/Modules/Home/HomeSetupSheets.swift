@@ -394,6 +394,8 @@ private struct HomePolicySheet: View {
             if settings != nil {
                 MoneyField(label: L("Fee"), cents: $fee, key: "fee", form: form, hint: L("Leave empty for no fee."))
                 MenuField(label: L("A cancellation is late when it comes less than"), options: [2, 4, 12, 24, 48].map { ($0, LF("%d hours before", $0)) }, selection: $window)
+                // The family sees the business's terms (docs/family-money.md §5): before booking and on each visit.
+                Text(L("Families see this fee, and until when they can cancel without it, when they book and on every visit.")).font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
             } else if failed {
                 ErrorState(message: L("Could not load the store settings.")) { await load() }
             } else {

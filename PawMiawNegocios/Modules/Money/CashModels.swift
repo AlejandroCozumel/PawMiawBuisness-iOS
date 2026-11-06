@@ -377,6 +377,12 @@ struct CashInvoice: Codable, Identifiable, Hashable {
     let cancelReason: String?
     let canceledAt: String?
     let canceledBy: CashActor?
+    /// "Perdonar saldo" (docs/family-money.md §1): what was forgiven, when, by whom and why.
+    /// Always total − refunded = paid + forgiven + balance. Absent from an older server.
+    let forgivenAmount: Int?
+    let forgivenAt: String?
+    let forgivenReason: String?
+    let forgivenBy: CashActor?
     let locationId: String?
     let receiptEmailedTo: String?
     let lineItemCount: Int?
@@ -412,6 +418,8 @@ struct CashInvoiceTotals: Codable, Hashable {
     let paidAmount: Int
     let balanceAmount: Int
     let draftAmount: Int?
+    /// What was forgiven on the list's bills: out of billed, neither paid nor owed. Absent from an older server.
+    let forgivenAmount: Int?
     let standingCount: Int
 }
 
@@ -547,6 +555,9 @@ struct CashCollectionItem: Codable, Identifiable, Hashable {
     let phone: String?
     let email: String?
     let onPawMiaw: Bool?
+    /// The family unlinked (or the business did): "Se desconectó de PawMiaw el {fecha}". Absent from an older server.
+    let disconnectedAt: String?
+    let disconnectedBy: String?
     let walkIn: Bool?
     let creditLimitAmount: Int?
     let overLimit: Bool?
@@ -600,6 +611,9 @@ struct CashAccount: Codable {
         let phone: String?
         let email: String?
         let onPawMiaw: Bool?
+        /// Unlinked: what they owe from before stays theirs, and a reminder in PawMiaw still reaches the bills' family.
+        let disconnectedAt: String?
+        let disconnectedBy: String?
         let walkIn: Bool?
         let creditLimitAmount: Int?
     }
@@ -750,6 +764,8 @@ struct CashExceptions: Codable {
     let total: Int
     let withoutReason: Int
     let items: [CashException]
+    /// The server's count for each kind ("forgiven" included); absent from an older server.
+    let counts: [String: Int]?
 }
 
 struct CashSalesReport: Codable {

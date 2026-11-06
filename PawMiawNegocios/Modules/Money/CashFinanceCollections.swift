@@ -246,6 +246,8 @@ struct CashCollectionRow: View {
         if let credit = item.credit, credit > 0 {
             Chip(text: LF("%@ of credit to apply", money(credit)), tone: .good, icon: "piggy-bank")
         }
+        // They still owe it after an unlink (docs/family-money.md §1): the family keeps seeing these bills.
+        DisconnectedMark(at: item.disconnectedAt, by: item.disconnectedBy)
         Chip(text: lastContact, tone: .muted)
     }
 
@@ -371,12 +373,19 @@ struct CashAccountScreen: View {
                 PMButton(L("Open client"), systemImage: "user-round", variant: .outline) { openClient = true }
             }
         } footer: {
-            if account.client.walkIn != true && (!pets.isEmpty || account.client.onPawMiaw == true) {
+            let disconnected = DisconnectedMark.text(at: account.client.disconnectedAt, by: account.client.disconnectedBy) != nil
+            if account.client.walkIn != true && (!pets.isEmpty || account.client.onPawMiaw == true || disconnected) {
                 VStack(spacing: 0) {
                     RowDivider()
-                    FlowLayout(spacing: 6) {
-                        ForEach(pets, id: \.self) { pet in Chip(text: pet, tone: .muted, icon: "paw-print") }
-                        if account.client.onPawMiaw == true { Chip(text: L("On PawMiaw"), tone: .info, icon: "smartphone") }
+                    VStack(alignment: .leading, spacing: 8) {
+                        if !pets.isEmpty || account.client.onPawMiaw == true {
+                            FlowLayout(spacing: 6) {
+                                ForEach(pets, id: \.self) { pet in Chip(text: pet, tone: .muted, icon: "paw-print") }
+                                if account.client.onPawMiaw == true { Chip(text: L("On PawMiaw"), tone: .info, icon: "smartphone") }
+                            }
+                        }
+                        // Unlinked: what they owe from before stays theirs (docs/family-money.md §1).
+                        DisconnectedMark(at: account.client.disconnectedAt, by: account.client.disconnectedBy, withDetail: true)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -477,7 +486,11 @@ struct CashAccountScreen: View {
             VStack(spacing: 8) {
                 reminderButton(account, "whatsapp", "WhatsApp", account.client.phone != nil ? L("A message with the amount") : L("No phone on file"), "message-circle", account.client.phone != nil)
                 reminderButton(account, "email", L("Email"), account.client.email ?? L("No email on file"), "mail", account.client.email != nil)
-                reminderButton(account, "app", L("In PawMiaw"), account.client.onPawMiaw == true ? L("A notification on their phone") : L("Not on PawMiaw"), "smartphone", account.client.onPawMiaw == true)
+                // After an unlink the reminder still reaches the family the bills belong to; the server says `not_on_pawmiaw` when nobody is left.
+                let disconnected = account.client.disconnectedAt?.nonEmpty != nil
+                reminderButton(account, "app", L("In PawMiaw"),
+                               account.client.onPawMiaw == true ? L("A notification on their phone") : disconnected ? L("For the bills from before they unlinked") : L("Not on PawMiaw"),
+                               "smartphone", account.client.onPawMiaw == true || disconnected)
             }
             .padding(16)
         }

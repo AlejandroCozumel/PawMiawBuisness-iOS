@@ -275,6 +275,38 @@ struct HomeNeeds: Decodable {
     let stock: HomeStockCounts?
     let due: HomeDueCounts?
     let onlineRequests: HomeOnlineRequestList?
+    /// Families who said "Sí fuimos" to a visit recorded as a no-show (docs/family-money.md §5): up to 8
+    /// items, `count` all. Nil without appointments.view, or from an older server.
+    let disputes: HomeDisputes?
+}
+
+struct HomeDisputes: Decodable {
+    let count: Int?
+    let items: [HomeDispute]?
+}
+
+/// One family's "Sí fuimos" on Home. Amounts are nil without billing.view.
+struct HomeDispute: Decodable, Identifiable {
+    struct Fee: Decodable {
+        let invoiceId: String?
+        let status: String?
+        let kind: String?
+        let amount: Int?
+        let balance: Int?
+        let currency: String?
+    }
+    let appointmentId: String
+    let petName: String?
+    let clientName: String?
+    let serviceLabel: String?
+    let startsAt: String?
+    let disputedAt: String?
+    let providerClientId: String?
+    let providerClientPetId: String?
+    /// The fee bill to forgive ("Perdonar el cargo"), or nil when none was charged.
+    let feeInvoiceId: String?
+    let fee: Fee?
+    var id: String { appointmentId }
 }
 
 struct HomeNotesToSign: Decodable {

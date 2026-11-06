@@ -44,6 +44,8 @@ enum HomeSheet: Identifiable {
     case program(StaysRequest)
     case setup(HomeSetupSheet)
     case closeShift(CashSession)
+    /// "Perdonar el cargo" on a family's "Sí fuimos": the fee bill, forgiven over Home.
+    case forgiveFee(String)
 
     var id: String {
         switch self {
@@ -63,6 +65,7 @@ enum HomeSheet: Identifiable {
         case .program(let request): "program-\(request.id)"
         case .setup(let sheet): "setup-\(sheet.id)"
         case .closeShift(let session): "close-shift-\(session.id)"
+        case .forgiveFee(let id): "forgive-fee-\(id)"
         }
     }
 }
@@ -177,6 +180,26 @@ final class HomeActions {
             guard let self else { return }
             let context = await self.context(a)
             self.sheet = .recordPast(context)
+        }
+    }
+
+    /// "Perdonar el cargo": the disputed no-show's fee bill (docs/family-money.md §5).
+    func forgiveFee(_ invoiceId: String) { sheet = .forgiveFee(invoiceId) }
+
+    /// "Descartar" a family's "Sí fuimos": off "Te necesita"; the answer stays on the visit.
+    func dismissDispute(_ appointmentId: String) {
+        let key = "dispute-\(appointmentId)"
+        guard !busy.contains(key) else { return }
+        busy.insert(key)
+        Task {
+            defer { busy.remove(key) }
+            do {
+                let _: SchedDisputeDismissed = try await API.post("/provider-appointments/\(appointmentId)/dispute/dismiss")
+                Toast.show(L("Dismissed. Their answer stays on the visit."))
+                announceDataChanged()
+            } catch {
+                schedToast(error)
+            }
         }
     }
 
@@ -516,6 +539,8 @@ final class HomeActions {
             setup.view(actions: self)
         case .closeShift(let session):
             CashCloseShiftSheet(session: session) { announceDataChanged() }
+        case .forgiveFee(let id):
+            CashForgiveBillSheet(invoiceId: id)
         }
     }
 

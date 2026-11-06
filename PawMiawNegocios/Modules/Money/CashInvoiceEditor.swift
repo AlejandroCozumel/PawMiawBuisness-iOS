@@ -290,7 +290,8 @@ struct CashInvoiceEditorSheet: View {
             changed = true
         }))
         if destination == "open" {
-            DateTimeField(label: L("Pay by"), date: $dueAt, min: issuedAt, components: [.date], key: "dueAt", form: form, required: true)
+            // The family's receipt says it, and they are reminded the day before (docs/family-money.md §3).
+            DateTimeField(label: L("Pay by"), date: $dueAt, min: issuedAt, components: [.date], key: "dueAt", form: form, hint: L("The family sees this date and is reminded the day before."), required: true)
         }
     }
 

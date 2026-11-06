@@ -1393,3 +1393,28 @@
 "Moving…" = "Pasando…";
 "Save address" = "Guardar dirección";
 "Remove" = "Quitar";
+
+/* Unlink and the family's bills (docs/family-money.md §1). */
+"They owe you %@" = "Te debe %@";
+"%d open bill" = "%d cuenta pendiente";
+"%d open bills" = "%d cuentas pendientes";
+"What happens to what they owe?" = "¿Qué pasa con lo que te debe?";
+"Keep charging" = "Seguir cobrando";
+"The family keeps seeing what they owe and their receipts." = "La familia sigue viendo lo que debe y sus recibos.";
+"Forgive the balance" = "Perdonar el saldo";
+"Everything pending is forgiven." = "Se perdona todo lo pendiente.";
+"It was another family" = "Era otra familia";
+"What was never paid stops showing in their PawMiaw; what was paid stays with whoever paid it." = "Lo que nunca se pagó deja de verse en su PawMiaw; lo pagado se queda con quien lo pagó.";
+"Why is it forgiven?" = "¿Por qué se perdona?";
+"e.g. The family moved away, a courtesy" = "p. ej. La familia se mudó, una cortesía";
+"Only your team sees the reason. It shows in Cortes as an exception." = "Solo tu equipo ve el motivo. Aparece en Cortes como excepción.";
+"Say why the balance is forgiven." = "Di por qué se perdona el saldo.";
+"You can’t forgive balances. Ask an owner or admin." = "No puedes perdonar saldos. Pídeselo a un dueño o administrador.";
+"The family keeps its receipts." = "La familia conserva sus recibos.";
+"The family keeps its receipts: %d paid bills stay in their PawMiaw." = "La familia conserva sus recibos: %d cuentas pagadas se quedan en su PawMiaw.";
+"The family keeps its receipts: 1 paid bill stays in their PawMiaw." = "La familia conserva sus recibos: 1 cuenta pagada se queda en su PawMiaw.";
+"Checking what they owe…" = "Revisando lo que debe…";
+"%1$@ unlinked. %2$@ forgiven." = "%1$@ quedó desvinculada. Se perdonaron %2$@.";
+"%@ unlinked. 1 bill forgiven." = "%@ quedó desvinculada. Se perdonó 1 cuenta.";
+"%1$@ unlinked. %2$d bills forgiven." = "%1$@ quedó desvinculada. Se perdonaron %2$d cuentas.";
+"%@ unlinked. What was never paid left their PawMiaw." = "%@ quedó desvinculada. Lo que nunca se pagó salió de su PawMiaw.";

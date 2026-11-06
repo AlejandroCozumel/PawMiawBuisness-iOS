@@ -297,30 +297,43 @@ struct ClientDetailScreen: View {
             }),
             stats: stats(client, proxy: proxy),
             actionsOnRow: true,
-            storageKey: "client"
-        ) {
-            // Booking is the one filled button; then reaching the family, then what you do with the client.
-            if book {
-                PMButton(L("Book a visit"), systemImage: "calendar-plus") { route = .bookVisit(BookingPrefill(clientId: client.id)) }
+            storageKey: "client",
+            actions: { headerActions(client, book: book, tel: tel, whatsapp: whatsapp) },
+            footer: {
+                // Unlinked (by the family or by the business): when, and that what they owe from before stays theirs.
+                if DisconnectedMark.text(at: client.disconnectedAt, by: client.disconnectedBy) != nil {
+                    RowDivider()
+                    DisconnectedMark(at: client.disconnectedAt, by: client.disconnectedBy, withDetail: true)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            if let tel {
-                PMButton(L("Call"), systemImage: "phone", variant: .outline) { openURL(tel) }
-            }
-            if let whatsapp {
-                PMButton(L("WhatsApp"), systemImage: "message-circle", variant: .outline) { openURL(whatsapp) }
-            }
-            if tel != nil || whatsapp != nil { ChipRule() }
-            if workspace.can(.petsCreate) && !client.isArchived {
-                PMButton(L("Add pet"), systemImage: "paw-print", variant: .outline) { addingPet = true }
-            }
-            if workspace.can(.clientsEdit) && !client.isLinked && !client.isArchived {
-                PMButton(L("Link household"), systemImage: "link-2", variant: .outline) { inviting = true }
-            }
-            if workspace.can(.clientsEdit) {
-                PMButton(L("Edit client"), systemImage: "pencil", variant: .outline) { editing = true }
-            }
-            moreMenu(client)
+        )
+    }
+
+    @ViewBuilder private func headerActions(_ client: ClientsClient, book: Bool, tel: URL?, whatsapp: URL?) -> some View {
+        // Booking is the one filled button; then reaching the family, then what you do with the client.
+        if book {
+            PMButton(L("Book a visit"), systemImage: "calendar-plus") { route = .bookVisit(BookingPrefill(clientId: client.id)) }
         }
+        if let tel {
+            PMButton(L("Call"), systemImage: "phone", variant: .outline) { openURL(tel) }
+        }
+        if let whatsapp {
+            PMButton(L("WhatsApp"), systemImage: "message-circle", variant: .outline) { openURL(whatsapp) }
+        }
+        if tel != nil || whatsapp != nil { ChipRule() }
+        if workspace.can(.petsCreate) && !client.isArchived {
+            PMButton(L("Add pet"), systemImage: "paw-print", variant: .outline) { addingPet = true }
+        }
+        if workspace.can(.clientsEdit) && !client.isLinked && !client.isArchived {
+            PMButton(L("Link household"), systemImage: "link-2", variant: .outline) { inviting = true }
+        }
+        if workspace.can(.clientsEdit) {
+            PMButton(L("Edit client"), systemImage: "pencil", variant: .outline) { editing = true }
+        }
+        moreMenu(client)
     }
 
     private func moreMenu(_ client: ClientsClient) -> some View {
