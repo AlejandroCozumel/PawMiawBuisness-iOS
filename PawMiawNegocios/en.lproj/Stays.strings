@@ -5,3 +5,4 @@
 "Missed visit" = "Missed";
 "%d arriving late" = "%d late";
 "Estimated total" = "Estimate";
+"Expires %@@ask" = "Expires %@";

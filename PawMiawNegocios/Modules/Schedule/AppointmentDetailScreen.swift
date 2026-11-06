@@ -254,7 +254,11 @@ struct AppointmentDetailScreen: View {
     }
 
     /// The visit's work by status: the online request's answers, the arrival, the waiting room, or the note and the bill.
+    /// A family's ask to move it ("Cambio de hora") is answered first; the visit stays booked meanwhile.
     @ViewBuilder private func center(_ a: SchedAppointment, _ f: Facts) -> some View {
+        if !a.isRequested && a.rescheduleProposal != nil {
+            SchedRequestPanel(target: SchedAnswerTarget(appointment: a))
+        }
         if a.isRequested {
             SchedRequestPanel(target: SchedAnswerTarget(appointment: a))
         } else if f.status == "scheduled" {
@@ -455,7 +459,7 @@ struct AppointmentDetailScreen: View {
                     Text("· " + (a.assignedMember?.name.map { LF("with %@", $0) } ?? L("Whoever is free"))).font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
                 }
                 if let room = a.room { Text("· " + room).font(Theme.text(14)).foregroundStyle(Theme.inkSoft) }
-                if a.isRequested { SchedPendingMark() }
+                if a.isRequested { SchedPendingMark() } else if a.rescheduleProposal != nil { SchedRescheduleMark() }
                 if a.bookedOnline == true { SchedOnlineMark() }
                 if let moved = a.movedFromStartsAt { Text("· " + LF("You moved it from %@", DateText.time(moved))).font(Theme.text(14)).foregroundStyle(Theme.inkSoft) }
                 if a.hoursOverride == true { Chip(text: L("After hours"), icon: "moon-star") }

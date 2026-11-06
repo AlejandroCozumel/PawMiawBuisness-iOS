@@ -504,16 +504,22 @@ struct StaysOnlineClient: Codable, Hashable { let id: String?; let name: String?
 struct StaysOnlinePet: Codable, Hashable { let appointmentId: String?; let providerClientPetId: String?; let name: String?; let species: String?; let photoUrl: String? }
 
 struct StaysOnlineRequest: Codable, Identifiable, Hashable {
+    /// "request" or "reschedule" (a family asks to move a confirmed booking); none from an older server.
+    let kind: String?
     let appointmentId: String
+    /// A reschedule: the visit's time now (the time asked for is in `rescheduleProposal`).
     let startsAt: String?
     let serviceLabel: String?
     let atHome: Bool?
     let notes: String?
+    /// A reschedule: when the ask expires.
     let releasesAt: String?
     let client: StaysOnlineClient?
     let pets: [StaysOnlinePet]?
+    let rescheduleProposal: SchedRescheduleProposal?
 
     var id: String { appointmentId }
+    var isReschedule: Bool { kind == "reschedule" }
 }
 
 struct StaysOnlineList: Codable {

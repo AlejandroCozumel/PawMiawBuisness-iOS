@@ -414,16 +414,22 @@ struct HomeOnlineRequestList: Decodable {
 }
 
 struct HomeOnlineRequest: Decodable, Identifiable {
+    /// "request" or "reschedule" (a family asks to move a confirmed booking); none from an older server.
+    let kind: String?
     let appointmentId: String
+    /// A reschedule: the visit's time now (the time asked for is in `rescheduleProposal`).
     let startsAt: String?
     let endsAt: String?
     let serviceLabel: String?
     let notes: String?
+    /// A reschedule: when the ask expires.
     let releasesAt: String?
     let atHome: Bool?
     let client: HomeClientRef?
     let pets: [HomeOnlinePet]?
+    let rescheduleProposal: SchedRescheduleProposal?
     var id: String { appointmentId }
+    var isReschedule: Bool { kind == "reschedule" }
 }
 
 struct HomeOnlinePet: Decodable {

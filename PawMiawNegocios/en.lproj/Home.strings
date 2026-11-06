@@ -44,3 +44,4 @@
 "%d missed@dose" = "%d missed";
 "%d late@dose" = "%d late";
 "%d due@dose" = "%d due";
+"Expires %@@ask" = "Expires %@";

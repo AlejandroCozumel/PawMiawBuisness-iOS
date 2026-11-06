@@ -472,6 +472,7 @@ private struct HomeUnfinishedRow: View {
 }
 
 /// A family's online booking: answered over Home (Confirmar, Cambiar hora y confirmar, Rechazar).
+/// Their ask to move one reads "Cambio de hora: {now} → {asked for}" (Aceptar, Rechazar).
 private struct HomeOnlineNeedRow: View {
     let item: HomeOnlineRequest
     let canAnswer: Bool
@@ -481,10 +482,13 @@ private struct HomeOnlineNeedRow: View {
 
     var body: some View {
         // "Se libera en 3 horas" on its own line: on a phone it would be cut off at the end of the hint.
-        let release = HomeText.releaseIn(item.releasesAt).map { LF("Released %@", $0) }
+        let release = HomeText.releaseIn(item.releasesAt).map { item.isReschedule ? LF("Expires %@@ask", $0) : LF("Released %@", $0) }
+        let when = item.isReschedule && item.startsAt != nil
+            ? SchedOnlineText.change(item.startsAt ?? "", item.rescheduleProposal?.startsAt)
+            : DateText.dayTime(item.startsAt)
         NeedsRow(
             title: "\((item.pets ?? []).compactMap(\.name).joined(separator: ", ")) · \(item.serviceLabel ?? "")",
-            hint: [[DateText.dayTime(item.startsAt), item.client?.name].compactMap { $0 }.joined(separator: " · "), release].compactMap { $0 }.joined(separator: "\n"),
+            hint: [[when, item.client?.name].compactMap { $0 }.joined(separator: " · "), release].compactMap { $0 }.joined(separator: "\n"),
             first: first
         ) {
             if canAnswer {

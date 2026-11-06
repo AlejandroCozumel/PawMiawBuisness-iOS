@@ -10,11 +10,20 @@
 //  reads. Pets booked together are answered together; the server acts on
 //  all of them and tells the family.
 //
+//  A family's ask to move a confirmed online booking ("Cambio de hora", §13)
+//  is answered in the same places with two of those answers: Aceptar (the
+//  visit moves to the time asked for) and Rechazar with a reason (it keeps
+//  its time).
+//
 
 import SwiftUI
 
 /// What the answers need of a request, from the inbox's item or from the visit itself.
 struct SchedAnswerTarget: Hashable {
+    /// A family's ask to move a confirmed visit, not a booking to confirm.
+    let reschedule: Bool
+    /// The time asked for (an ask); the visit's own time stays in `startsAt`/`endsAt`.
+    let proposal: SchedRescheduleProposal?
     let appointmentId: String
     let startsAt: String
     let endsAt: String?
@@ -32,6 +41,8 @@ struct SchedAnswerTarget: Hashable {
     let pets: [SchedRequestPet]
 
     init(request: SchedOnlineRequest) {
+        reschedule = request.isReschedule
+        proposal = request.isReschedule ? request.rescheduleProposal : nil
         appointmentId = request.appointmentId
         startsAt = request.startsAt
         endsAt = request.endsAt
@@ -50,6 +61,8 @@ struct SchedAnswerTarget: Hashable {
     }
 
     init(appointment a: SchedAppointment) {
+        reschedule = !a.isRequested && a.rescheduleProposal != nil
+        proposal = reschedule ? a.rescheduleProposal : nil
         appointmentId = a.id
         startsAt = a.startsAt
         endsAt = a.endsAt
@@ -61,11 +74,12 @@ struct SchedAnswerTarget: Hashable {
         serviceLabel = a.serviceLabel
         atHome = a.atHome ?? false
         notes = a.notes
-        releasesAt = a.onlineRequest?.releasesAt
+        releasesAt = reschedule ? a.rescheduleProposal?.releasesAt : a.onlineRequest?.releasesAt
         clientName = a.clientName
         clientPhone = a.clientPhone
-        // A family's pets booked together are answered together: the others still waiting with it.
-        let together = a.group?.kind == "household" ? (a.group?.pets ?? []).filter { $0.status == "requested" } : []
+        // A family's pets booked together are answered together: the others still waiting with it
+        // (a request's are still requested; an ask's are still booked, and move with it).
+        let together = a.group?.kind == "household" ? (a.group?.pets ?? []).filter { $0.status == a.status } : []
         pets = together.isEmpty
             ? [SchedRequestPet(appointmentId: a.id, providerClientPetId: a.providerClientPetId, name: a.petName, species: a.petSpecies, photoUrl: a.petPhotoUrl)]
             : together.map { SchedRequestPet(appointmentId: $0.appointmentId, providerClientPetId: $0.providerClientPetId, name: $0.name ?? "", species: $0.species, photoUrl: $0.photoUrl) }
@@ -94,6 +108,25 @@ enum SchedOnlineText {
         let hours = Int((Double(minutes) / 60).rounded())
         return hours == 1 ? L("in 1 hour") : LF("in %@ hours", String(hours))
     }
+
+    /// "Hoy, 10:00 a.m. → Mañana, 11:30 a.m."; the day once when both are on it ("Hoy, 10:00 a.m. → 11:30 a.m.").
+    static func move(_ from: String, _ to: String?) -> String {
+        let sameDay = SchedDay.key(from) != nil && SchedDay.key(from) == SchedDay.key(to)
+        return "\(DateText.dayTime(from)) → \(sameDay ? DateText.time(to) : DateText.dayTime(to))"
+    }
+
+    /// "Cambio de hora: Hoy, 10:00 a.m. → Mañana, 11:30 a.m." (the visit's time now → the time asked for).
+    static func change(_ from: String, _ to: String?) -> String {
+        LF("Change of time: %@", move(from, to))
+    }
+
+    /// The inbox's title: bookings to confirm, changes of time to answer, or both
+    /// (`asks`: the changes of time among the items read).
+    static func inboxTitle(count: Int, asks: Int) -> String {
+        if asks == 0 { return count == 1 ? L("1 online booking to confirm") : LF("%@ online bookings to confirm", String(count)) }
+        if asks == count { return LP(count, "%d change of time to answer", "%d changes of time to answer") }
+        return LF("%d online bookings and changes of time to answer", count)
+    }
 }
 
 // MARK: - Facts
@@ -106,7 +139,7 @@ struct SchedRequestFacts: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(L("What they booked")).font(.brandHeading(16.8, relativeTo: .headline)).foregroundStyle(Theme.inkStrong)
+            Text(target.reschedule ? L("What they ask") : L("What they booked")).font(.brandHeading(16.8, relativeTo: .headline)).foregroundStyle(Theme.inkStrong)
             FlowLayout(spacing: 8) {
                 ForEach(target.pets, id: \.appointmentId) { pet in
                     HStack(spacing: 8) {
@@ -118,9 +151,20 @@ struct SchedRequestFacts: View {
                 }
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top), count: sizeClass == .regular ? 2 : 1), spacing: 12) {
-                SchedFactBox(icon: "calendar-clock", label: L("When")) {
-                    Text(SchedOnlineText.when(target.startsAt, target.endsAt))
-                    Text(target.serviceLabel).font(Theme.text(12)).foregroundStyle(Theme.inkSoft)
+                if target.reschedule {
+                    // An ask: the visit's time now, then the time asked for (and who would see them then).
+                    SchedFactBox(icon: "calendar-clock", label: L("Now")) {
+                        Text(SchedOnlineText.when(target.startsAt, target.endsAt))
+                        Text(target.serviceLabel).font(Theme.text(12)).foregroundStyle(Theme.inkSoft)
+                    }
+                    SchedFactBox(icon: "calendar-check", label: L("Asks for")) {
+                        Text(target.proposal.map { SchedOnlineText.when($0.startsAt, $0.endsAt) } ?? "—")
+                    }
+                } else {
+                    SchedFactBox(icon: "calendar-clock", label: L("When")) {
+                        Text(SchedOnlineText.when(target.startsAt, target.endsAt))
+                        Text(target.serviceLabel).font(Theme.text(12)).foregroundStyle(Theme.inkSoft)
+                    }
                 }
                 SchedFactBox(icon: "phone", label: L("Family")) {
                     Text(target.clientName)
@@ -129,8 +173,10 @@ struct SchedRequestFacts: View {
                     }
                 }
                 SchedFactBox(icon: "user-round", label: L("With")) {
-                    Text(target.memberName ?? L("Whoever is free"))
-                    if let room = target.room { Text(room).font(Theme.text(12)).foregroundStyle(Theme.inkSoft) }
+                    let who = target.reschedule ? target.proposal?.assigned?.name : target.memberName
+                    let room = target.reschedule ? target.proposal?.room : target.room
+                    Text(who ?? L("Whoever is free"))
+                    if let room { Text(room).font(Theme.text(12)).foregroundStyle(Theme.inkSoft) }
                 }
                 if target.atHome {
                     SchedFactBox(icon: "house", label: L("Where")) { Text(L("At the family’s home")) }
@@ -144,7 +190,9 @@ struct SchedRequestFacts: View {
             if let release = SchedOnlineText.releaseIn(target.releasesAt) {
                 HStack(alignment: .top, spacing: 8) {
                     Glyph("clock-3", size: 16).padding(.top, 2)
-                    Text(LF("The time is held for them. With no answer it is released %@, and the family is told.", release))
+                    Text(target.reschedule
+                         ? LF("The new time is held for them and the visit stays where it is. With no answer the ask expires %@, and the family is told.", release)
+                         : LF("The time is held for them. With no answer it is released %@, and the family is told.", release))
                 }
                 .font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
             }
@@ -192,21 +240,33 @@ struct SchedRequestAnswer: View {
     @State private var working = false
     @State private var pickerVersion = 0
 
-    private var quickReasons: [String] { [L("We are full at that time."), L("That service needs a call first."), L("We can’t see this pet for that.")] }
+    private var quickReasons: [String] {
+        target.reschedule
+            ? [L("We are full at that time."), L("Nobody who does it is free then."), L("Call us and we’ll find another time.")]
+            : [L("We are full at that time."), L("That service needs a call first."), L("We can’t see this pet for that.")]
+    }
+
+    /// A request's three answers; an ask's two (Aceptar, Rechazar).
+    private var options: [Segmented<Mode>.Option] {
+        target.reschedule
+            ? [.init(Mode.confirm, L("Accept"), icon: "check"), .init(Mode.decline, L("Decline"), icon: "circle-x")]
+            : [.init(Mode.confirm, L("Confirm"), icon: "check"), .init(Mode.change, L("Other time"), icon: "calendar-clock"), .init(Mode.decline, L("Decline"), icon: "circle-x")]
+    }
 
     var body: some View {
         if !workspace.can(.appointmentsCreate) {
             Text(L("Someone who books visits can answer it.")).font(Theme.smallFont).foregroundStyle(Theme.inkSoft)
         } else {
-            // The web's answer panel: the three answers as one switch, on a pale blue card.
+            // The web's answer panel: the answers as one switch, on a pale blue card.
             FormScroll(form: form) {
                 VStack(alignment: .leading, spacing: 16) {
-                    Segmented(options: [
-                        .init(Mode.confirm, L("Confirm"), icon: "check"),
-                        .init(Mode.change, L("Other time"), icon: "calendar-clock"),
-                        .init(Mode.decline, L("Decline"), icon: "circle-x"),
-                    ], selection: $mode, label: L("Answer"))
+                    Segmented(options: options, selection: $mode, label: L("Answer"))
                     switch mode {
+                    case .confirm where target.reschedule:
+                        let asked = target.proposal.map { SchedOnlineText.when($0.startsAt, $0.endsAt) } ?? "—"
+                        Text(LF("The visit moves to %@, and the family is told.", asked) + told)
+                            .font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
+                        PMButton(L("Accept"), systemImage: "check", fullWidth: true, isWorking: working) { accept() }
                     case .confirm:
                         Text(L("It becomes a visit in the Schedule at the time they chose, and the family is told it is confirmed.") + told)
                             .font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
@@ -224,8 +284,13 @@ struct SchedRequestAnswer: View {
                             }
                         }
                         PMTextField(L("Why (optional, the family reads it)"), text: $reason, key: "reason", form: form, multiline: true)
-                        Text(L("The time is freed and the family is told, with a way to book another time.")).font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
-                        PMButton(L("Decline"), systemImage: "circle-x", variant: .destructive, fullWidth: true, isWorking: working) { decline() }
+                        Text(target.reschedule
+                             ? L("The visit keeps its time, the time they asked for is freed, and the family is told.")
+                             : L("The time is freed and the family is told, with a way to book another time."))
+                            .font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
+                        PMButton(L("Decline"), systemImage: "circle-x", variant: .destructive, fullWidth: true, isWorking: working) {
+                            if target.reschedule { declineChange() } else { decline() }
+                        }
                     }
                 }
                 .padding(16)
@@ -260,6 +325,11 @@ struct SchedRequestAnswer: View {
                     return
                 }
                 schedToast(error)
+                // Nothing waits any more (answered, released or withdrawn meanwhile): the list drops it.
+                if (error as? SchedFailure)?.code == "not_a_reschedule" {
+                    announceDataChanged()
+                    onDone()
+                }
             }
         }
     }
@@ -294,6 +364,23 @@ struct SchedRequestAnswer: View {
         let id = target.appointmentId, why = reason.nonEmpty
         run(L("Declined. The family has been told.")) {
             try await Self.answer("/provider-appointments/\(id)/online/decline", body: ["reason": why])
+        }
+    }
+
+    /// An ask's Aceptar: the visit (and every pet booked with it) moves to the time asked for.
+    private func accept() {
+        let id = target.appointmentId
+        let asked = target.proposal.map { SchedOnlineText.when($0.startsAt, $0.endsAt) }
+        run(asked.map { LF("Moved to %@. The family has been told.", $0) } ?? L("Change accepted. The family has been told.")) {
+            try await Self.answer("/provider-appointments/\(id)/online/accept-reschedule", body: [:])
+        }
+    }
+
+    /// An ask's Rechazar, with the reason the family reads: the visit keeps its time.
+    private func declineChange() {
+        let id = target.appointmentId, why = reason.nonEmpty
+        run(L("Change declined. The visit keeps its time and the family has been told.")) {
+            try await Self.answer("/provider-appointments/\(id)/online/decline-reschedule", body: ["reason": why])
         }
     }
 }
@@ -415,7 +502,8 @@ struct SchedFreeTimePicker: View {
 // MARK: - The inbox
 
 /// A request in the inbox (web `OnlineRequestCard`): a dashed waiting card with the pets,
-/// what and when, who booked, and when it is released.
+/// what and when, who booked, and when it is released. An ask to move a visit reads
+/// "Cambio de hora: {now} → {asked for}" and when the ask expires.
 struct SchedRequestCard: View {
     let request: SchedOnlineRequest
     let onOpen: () -> Void
@@ -432,18 +520,23 @@ struct SchedRequestCard: View {
                         Text("\(request.client.name) · \(request.serviceLabel)").font(Theme.text(12)).foregroundStyle(Theme.inkSoft).lineLimit(1)
                     }
                     Spacer(minLength: 4)
-                    SchedPendingMark()
+                    if request.isReschedule { SchedRescheduleMark() } else { SchedPendingMark() }
                 }
-                HStack(spacing: 8) {
-                    Glyph("calendar-clock", size: 16).foregroundStyle(Theme.inkSoft)
-                    Text(SchedOnlineText.when(request.startsAt, request.endsAt)).lineLimit(1)
+                HStack(alignment: .top, spacing: 8) {
+                    Glyph("calendar-clock", size: 16).foregroundStyle(Theme.inkSoft).padding(.top, 1)
+                    if request.isReschedule {
+                        Text(SchedOnlineText.change(request.startsAt, request.rescheduleProposal?.startsAt)).fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text(SchedOnlineText.when(request.startsAt, request.endsAt)).lineLimit(1)
+                    }
                 }
                 .font(Theme.text(14, weight: .semibold)).foregroundStyle(Theme.inkStrong)
                 FlowLayout(spacing: 12, lineSpacing: 4) {
-                    HStack(spacing: 4) { Glyph("user-round", size: 12); Text(request.assigned?.name ?? L("Whoever is free")) }
+                    let who = request.isReschedule ? request.rescheduleProposal?.assigned?.name : request.assigned?.name
+                    HStack(spacing: 4) { Glyph("user-round", size: 12); Text(who ?? L("Whoever is free")) }
                     if request.atHome == true { HStack(spacing: 4) { Glyph("map-pin", size: 12); Text(L("At the family’s home")) } }
                     if let release = SchedOnlineText.releaseIn(request.releasesAt) {
-                        HStack(spacing: 4) { Glyph("clock-3", size: 12); Text(LF("Released %@", release)) }
+                        HStack(spacing: 4) { Glyph("clock-3", size: 12); Text(request.isReschedule ? LF("Expires %@@ask", release) : LF("Released %@", release)) }
                             .foregroundStyle(soon ? Theme.destructive : Theme.inkSoft)
                             .fontWeight(soon ? .bold : .regular)
                     }
@@ -471,9 +564,18 @@ struct SchedRequestPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) { SchedPendingMark(); SchedOnlineMark() }
-                Text(L("A family booked this online")).font(.brandHeading(20, relativeTo: .title3)).foregroundStyle(Theme.inkStrong)
-                Text(L("It holds its time but isn’t a visit yet: no check-in, start or bill until you confirm it.")).font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
+                HStack(spacing: 8) {
+                    if target.reschedule { SchedRescheduleMark() } else { SchedPendingMark() }
+                    SchedOnlineMark()
+                }
+                if target.reschedule {
+                    Text(L("The family asks to move this visit")).font(.brandHeading(20, relativeTo: .title3)).foregroundStyle(Theme.inkStrong)
+                    Text(SchedOnlineText.change(target.startsAt, target.proposal?.startsAt)).font(Theme.text(14, weight: .semibold)).foregroundStyle(Theme.inkStrong)
+                    Text(L("It stays at its time until you answer. Accept and it moves; decline and it stays.")).font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
+                } else {
+                    Text(L("A family booked this online")).font(.brandHeading(20, relativeTo: .title3)).foregroundStyle(Theme.inkStrong)
+                    Text(L("It holds its time but isn’t a visit yet: no check-in, start or bill until you confirm it.")).font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
+                }
             }
             SchedRequestFacts(target: target)
             SchedRequestAnswer(target: target)
@@ -494,8 +596,12 @@ struct SchedRequestSheet: View {
 
     var body: some View {
         let target = SchedAnswerTarget(request: request)
-        ProviderModal(title: "\(target.serviceLabel) · \(target.pets.map(\.name).joined(separator: ", "))", subtitle: "\(target.clientName) · \(SchedOnlineText.when(target.startsAt, target.endsAt))", systemImage: "globe", accent: .aqua, cancelTitle: L("Close")) {
-            HStack(spacing: 8) { SchedPendingMark(); SchedOnlineMark() }
+        let when = target.reschedule ? SchedOnlineText.change(target.startsAt, target.proposal?.startsAt) : SchedOnlineText.when(target.startsAt, target.endsAt)
+        ProviderModal(title: "\(target.serviceLabel) · \(target.pets.map(\.name).joined(separator: ", "))", subtitle: "\(target.clientName) · \(when)", systemImage: "globe", accent: .aqua, cancelTitle: L("Close")) {
+            HStack(spacing: 8) {
+                if target.reschedule { SchedRescheduleMark() } else { SchedPendingMark() }
+                SchedOnlineMark()
+            }
             SchedRequestFacts(target: target)
             if let onOpenVisit {
                 PMButton(L("Open the visit"), systemImage: "square-arrow-out-up-right", variant: .outline, size: .compact) {
@@ -509,7 +615,8 @@ struct SchedRequestSheet: View {
     }
 }
 
-/// Families' online bookings waiting for an answer (the server's count: pets booked together once).
+/// Families' online bookings waiting for an answer, and their asks to move one
+/// (the server's count of both: pets booked together once).
 struct SchedRequestsInbox: View {
     let list: SchedOnlineRequestList
     let onOpen: (SchedOnlineRequest) -> Void
@@ -517,7 +624,7 @@ struct SchedRequestsInbox: View {
     var body: some View {
         let count = list.count ?? 0
         if count > 0 {
-            PageSection(count == 1 ? L("1 online booking to confirm") : LF("%@ online bookings to confirm", String(count)), subtitle: L("Booked online, waiting for you")) {
+            PageSection(SchedOnlineText.inboxTitle(count: count, asks: (list.items ?? []).filter(\.isReschedule).count), subtitle: L("Booked online, waiting for you")) {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 10)], spacing: 10) {
                     ForEach(list.items ?? []) { request in
                         SchedRequestCard(request: request) { onOpen(request) }

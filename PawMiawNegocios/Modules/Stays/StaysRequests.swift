@@ -109,8 +109,10 @@ struct StaysRequestsView: View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 let count = online?.count ?? items.count
+                let asks = items.filter(\.isReschedule).count
                 VStack(alignment: .leading, spacing: 4) {
-                    StaysEyebrow(text: LP(count, "%d online booking to confirm", "%d online bookings to confirm"))
+                    // The server's count holds the families' asks to move a booking too ("Cambio de hora").
+                    StaysEyebrow(text: asks == 0 ? LP(count, "%d online booking to confirm", "%d online bookings to confirm") : SchedOnlineText.inboxTitle(count: count, asks: asks))
                     Text(L("Their time is held until you answer. Pets booked together are answered together.")).font(Theme.text(14)).foregroundStyle(Theme.inkSoft)
                 }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 12, alignment: .top)], spacing: 12) {
@@ -125,6 +127,7 @@ struct StaysRequestsView: View {
     }
 
     /// A visit a family booked online (web `OnlineRequestCard`): its time held, a dashed waiting edge.
+    /// Their ask to move one reads "Cambio de hora: {now} → {asked for}"; the visit's page answers it.
     private func onlineCard(_ request: StaysOnlineRequest) -> some View {
         let soon = DateText.parse(request.releasesAt).map { $0.timeIntervalSinceNow < 2 * 3600 } ?? false
         return Card(spacing: 12) {
@@ -135,11 +138,15 @@ struct StaysRequestsView: View {
                     Text("\(request.client?.name ?? "") · \(request.serviceLabel ?? "")").font(Theme.text(12)).foregroundStyle(Theme.inkSoft).lineLimit(1)
                 }
                 Spacer(minLength: 4)
-                Chip(text: L("To confirm"), icon: "clock-3", pending: true)
+                if request.isReschedule { SchedRescheduleMark() } else { Chip(text: L("To confirm"), icon: "clock-3", pending: true) }
             }
-            HStack(spacing: 8) {
-                Glyph("calendar-clock", size: 16).foregroundStyle(Theme.inkSoft)
-                Text(DateText.dayTime(request.startsAt)).lineLimit(1)
+            HStack(alignment: .top, spacing: 8) {
+                Glyph("calendar-clock", size: 16).foregroundStyle(Theme.inkSoft).padding(.top, 1)
+                if request.isReschedule, let now = request.startsAt {
+                    Text(SchedOnlineText.change(now, request.rescheduleProposal?.startsAt)).fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text(DateText.dayTime(request.startsAt)).lineLimit(1)
+                }
             }
             .font(Theme.text(14, weight: .semibold)).foregroundStyle(Theme.inkStrong)
             FlowLayout(spacing: 12) {
@@ -148,7 +155,7 @@ struct StaysRequestsView: View {
                     HStack(spacing: 4) { Glyph("map-pin", size: 12); Text(L("At the family’s home")) }
                 }
                 if let release = StaysWords.releaseIn(request.releasesAt) {
-                    HStack(spacing: 4) { Glyph("clock-3", size: 12); Text(LF("Released %@", release)) }
+                    HStack(spacing: 4) { Glyph("clock-3", size: 12); Text(request.isReschedule ? LF("Expires %@@ask", release) : LF("Released %@", release)) }
                         .fontWeight(soon ? .bold : .regular)
                         .foregroundStyle(soon ? Theme.destructive : Theme.inkSoft)
                 }

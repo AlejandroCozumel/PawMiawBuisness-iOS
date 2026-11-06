@@ -837,3 +837,8 @@
 "Stages of today's grooms" = "Etapas de las estéticas de hoy";
 "Visits booked for this day show here, with what each still needs." = "Las visitas agendadas para este día aparecen aquí, con lo que le falta a cada una.";
 "Keep it" = "Conservar";
+
+/* A family's ask to move a confirmed online booking ("Cambio de hora"). */
+"Expires %@@ask" = "Vence %@";
+"%d change of time to answer." = "%d cambio de hora por contestar.";
+"%d changes of time to answer." = "%d cambios de hora por contestar.";

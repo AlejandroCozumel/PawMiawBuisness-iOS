@@ -81,6 +81,21 @@ struct SchedOnlineRequestClock: Codable, Hashable {
     let releasesAt: String?
 }
 
+/// A family's ask to move its confirmed online booking, waiting for the business
+/// (paw-miaw-backend docs/online-booking.md §13): the time asked for, held from
+/// everyone else; the visit keeps its own time until staff accept or decline.
+/// On a visit it carries the ask's clock; on an inbox item the item has it.
+struct SchedRescheduleProposal: Codable, Hashable {
+    let startsAt: String
+    let endsAt: String?
+    /// Who takes it at the new time.
+    let assigned: SchedAssigned?
+    let room: String?
+    let requestedAt: String?
+    /// When the new time is let go if nobody answers.
+    let releasesAt: String?
+}
+
 struct SchedSeriesResult: Codable, Hashable {
     let id: String?
     let created: Int?
@@ -160,6 +175,8 @@ struct SchedAppointment: Codable, Identifiable, Hashable {
     let onlineOutcome: String?
     let declineReason: String?
     let movedFromStartsAt: String?
+    /// The family asks to move it ("Cambio de hora"): set only while the ask waits.
+    let rescheduleProposal: SchedRescheduleProposal?
     /// The groom, walk or training report (`reportKind` says which).
     let report: SvcReport?
     let reportUpdatedAt: String?
@@ -433,8 +450,13 @@ struct SchedRequestClient: Codable, Hashable {
     let phone: String?
 }
 
-/// One booking a family made online, waiting for an answer.
+/// One booking a family made online, waiting for an answer — or (`kind` "reschedule")
+/// their ask to move a confirmed one: then `startsAt`/`endsAt` are the visit's time now,
+/// `requestedAt`/`releasesAt` the ask's, and `rescheduleProposal` the time asked for.
 struct SchedOnlineRequest: Codable, Hashable, Identifiable {
+    /// "request" or "reschedule"; an older server sends none (a request).
+    let kind: String?
+    let rescheduleProposal: SchedRescheduleProposal?
     let appointmentId: String
     let groupId: String?
     let startsAt: String
@@ -453,6 +475,8 @@ struct SchedOnlineRequest: Codable, Hashable, Identifiable {
     let pets: [SchedRequestPet]
 
     var id: String { appointmentId }
+    /// A family's ask to move its visit ("Cambio de hora"), answered with Aceptar or Rechazar.
+    var isReschedule: Bool { kind == "reschedule" }
 }
 
 struct SchedOnlineRequestList: Codable, Hashable {

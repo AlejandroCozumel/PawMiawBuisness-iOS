@@ -22,6 +22,11 @@ struct SchedPendingMark: View {
     var body: some View { Chip(text: L("To confirm"), icon: "clock-3", pending: true) }
 }
 
+/// "Cambio de hora": the family asks to move a confirmed online booking; dashed like a request (it waits on you).
+struct SchedRescheduleMark: View {
+    var body: some View { Chip(text: L("Change of time"), icon: "arrow-right-left", pending: true) }
+}
+
 /// The visit's state, and what happened to its bill or fee when the list knows (web `StatusPills`).
 struct SchedStatusPills: View {
     let appointment: SchedAppointment

@@ -1080,3 +1080,25 @@
 "What the groomer should know before starting." = "Lo que el estilista debe saber antes de empezar.";
 "Why and where" = "Motivo y lugar";
 "The family signs an estimate of %@." = "La familia firma un presupuesto de %@.";
+
+/* A family's ask to move a confirmed online booking ("Cambio de hora", backend docs/online-booking.md §13). */
+"Change of time" = "Cambio de hora";
+"Change of time: %@" = "Cambio de hora: %@";
+"%d change of time to answer" = "%d cambio de hora por contestar";
+"%d changes of time to answer" = "%d cambios de hora por contestar";
+"%d online bookings and changes of time to answer" = "%d reservas en línea y cambios de hora por contestar";
+"Expires %@@ask" = "Vence %@";
+"What they ask" = "Lo que piden";
+"Now" = "Ahora";
+"Asks for" = "Pide";
+"The new time is held for them and the visit stays where it is. With no answer the ask expires %@, and the family is told." = "La nueva hora está apartada para ellos y la visita sigue donde está. Si nadie contesta, la solicitud vence %@ y se le avisa a la familia.";
+"The family asks to move this visit" = "La familia pide mover esta visita";
+"It stays at its time until you answer. Accept and it moves; decline and it stays." = "Sigue a su hora hasta que contestes. Si aceptas, se mueve; si rechazas, se queda.";
+"Accept" = "Aceptar";
+"The visit moves to %@, and the family is told." = "La visita se cambia a %@ y se le avisa a la familia.";
+"Nobody who does it is free then." = "A esa hora no hay quien lo haga.";
+"Call us and we’ll find another time." = "Llámanos y buscamos otra hora.";
+"The visit keeps its time, the time they asked for is freed, and the family is told." = "La visita se queda a su hora, la hora que pidieron se libera y se le avisa a la familia.";
+"Moved to %@. The family has been told." = "Cambiada a %@. Ya le avisamos a la familia.";
+"Change accepted. The family has been told." = "Cambio aceptado. Ya le avisamos a la familia.";
+"Change declined. The visit keeps its time and the family has been told." = "Cambio rechazado. La visita sigue a su hora y ya le avisamos a la familia.";

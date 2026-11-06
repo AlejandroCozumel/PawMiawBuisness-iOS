@@ -1,1 +1,3 @@
-/* Schedule (English): only the keys whose English differs from the key. None yet: every Schedule key is its English. */
+/* Schedule (English): only the keys whose English differs from the key. */
+
+"Expires %@@ask" = "Expires %@";

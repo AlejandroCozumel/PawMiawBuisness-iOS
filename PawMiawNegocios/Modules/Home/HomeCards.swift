@@ -418,10 +418,14 @@ struct HomeRequestsBanner: View {
         let waiting = requests.filter { $0.displayStatus == "pending" }
         let accepted = waiting.filter { $0.familyAcceptedAt != nil }.count
         let onlineCount = online?.count ?? 0
+        // The server's count holds the families' asks to move a booking too ("Cambio de hora").
+        let asks = min(onlineCount, (online?.items ?? []).filter(\.isReschedule).count)
+        let bookings = onlineCount - asks
         let total = waiting.count + onlineCount
         if total > 0 {
             let more = [
-                onlineCount > 0 ? (onlineCount == 1 ? L("1 visit booked online to confirm.") : LF("%d visits booked online to confirm.", onlineCount)) : nil,
+                bookings > 0 ? (bookings == 1 ? L("1 visit booked online to confirm.") : LF("%d visits booked online to confirm.", bookings)) : nil,
+                asks > 0 ? LP(asks, "%d change of time to answer.", "%d changes of time to answer.") : nil,
                 accepted > 0 ? (accepted == 1 ? L("1 family accepted the dates you proposed.") : LF("%d families accepted the dates you proposed.", accepted)) : nil,
             ].compactMap { $0 }.joined(separator: " ")
             NoticeCard(tone: .custom(Theme.pink), title: total == 1 ? L("1 request from a family is waiting for your answer.") : LF("%d requests from families are waiting for your answer.", total), message: more.nonEmpty ?? L("Stays, home stays and programs asked for from the app."), icon: "mail-question-mark", look: .banner, actionTitle: L("Review requests"), action: { reviewing = true })
